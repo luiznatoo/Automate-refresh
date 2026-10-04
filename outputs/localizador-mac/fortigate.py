@@ -139,9 +139,4 @@ def add_tables(tables,firewalls):
         for fw in firewalls for h in fw['hosts']]
     tables['Coleta FortiGate']=[{'Firewall':fw['name'],'IP gerenciamento':fw['host'],**fw['system'],**fw['status'],
         'Coleta UTC':fw['at'],'Erros':'; '.join(e['command']+': '+e['error'] for e in fw['errors']),'Estado HA':fw['ha']} for fw in firewalls]
-    partial=[fw['name'] for fw in firewalls if fw['errors'] or any(v!='OK' for v in fw['status'].values())]
-    for row in tables['Localização']:
-        if partial:
-            if not row['Resultado'].startswith('A revisar'): row['Resultado']='A revisar — '+row['Resultado']
-            row['Observação']+=' Coleta FortiGate parcial: '+', '.join(partial)+'.'
     tables['A revisar']=[r.copy() for r in tables['Localização'] if r['Resultado'].startswith('A revisar')]

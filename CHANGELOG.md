@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 2.1.7 — 2026-10-04
+
+- Localizador com três abas, credenciais de sessão e opções avançadas recolhidas.
+- Excel compacto com Dispositivos e Pendências, sem modelo externo.
+- Falhas de outras consultas não invalidam localizações observadas.
+- Sete testes de regressão do localizador.
+
 ## 2.1.6 — 2026-10-04
 
 - Primeiro registro do código no Git.

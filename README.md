@@ -2,7 +2,7 @@
 
 Ferramentas desktop em Python para auditoria e hardening FortiGate, mapeamento de switches, localização de dispositivos, comparação pré/pós-RDM e geração de configurações.
 
-Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
+Versão atual: **2.1.7**. Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
 
 ## Executar no Windows
 
@@ -23,7 +23,7 @@ Para utilizar as ferramentas que dependem deles, copie de sua instalação confi
 - FortiGate: pasta `bases` completa para `outputs/fortigate-config/bases` (configurações, catálogo e perfis de operadoras).
 - FortiSwitch: pasta `bases` completa para `outputs/fortiswitch-config/bases`.
 - Mapeamento: `modelo_fixo.xlsx` para `outputs/switch-mapper`.
-- Localizador: `modelo_correspondencia.xlsx` para `outputs/localizador-mac`.
+- Localizador: não precisa de modelo Excel externo.
 - RDM: `modelo_comparativo.xlsx` para `outputs/fortigate-rdm`.
 
 Cadastre equipamentos na interface ou importe CSV local. Esses arquivos são ignorados pelo Git. Os geradores requerem as bases locais para abrir. Não publique os ZIPs antigos: eles incluem bases privadas. As instruções dos módulos que mencionam bases incorporadas referem-se à instalação local completa.
@@ -33,6 +33,7 @@ Cadastre equipamentos na interface ou importe CSV local. Esses arquivos são ign
 ```powershell
 python -m unittest discover -s work/hardening-script-tests -v
 python -m unittest discover -s work/central-tests -v
+python -m unittest discover -s work/localizador-tests -v
 ```
 
 As suítes incluídas exercitam o núcleo e o escopo atual do hardening; não representam cobertura completa de todos os módulos nem homologação em hardware.

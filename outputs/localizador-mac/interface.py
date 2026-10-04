@@ -14,7 +14,7 @@ import localizar as motor
 SW_FIELDS=[('nome','Nome'),('host','IP / DNS'),('plataforma','Plataforma'),('porta','Porta SSH'),('usuario','Usuário específico'),('password_env','Grupo de senha'),('secret_env','Grupo enable')]
 FW_FIELDS=[('nome','Nome'),('host','IP / DNS do cluster'),('porta','Porta SSH'),('usuario','Usuário específico'),('password_env','Grupo de senha')]
 MAC_FIELDS=[('nome','Nome do dispositivo'),('mac','MAC address'),('ip','IP opcional')]
-SETTINGS={'modo':'integrado','usuario':'','timeout':'90','workers':'4','known_hosts':'','incluir_macs':False,'mesma_senha':False}
+SETTINGS={'modo':'integrado','usuario':'','timeout':'90','workers':'4','known_hosts':'','incluir_macs':False,'mesma_senha':True}
 
 
 def arrange_buttons(frame,buttons):
@@ -39,8 +39,8 @@ def build_jobs(project,passwords):
     known=settings['known_hosts'].strip()
     if known and not Path(known).is_file(): raise ValueError('Arquivo known_hosts não encontrado')
     switches=copy.deepcopy(project['switches']); firewalls=copy.deepcopy(project['firewalls']) if mode=='integrado' else []
-    if not switches: raise ValueError('Adicione pelo menos um switch na aba Switches.')
-    if mode=='integrado' and not firewalls: raise ValueError('Adicione o FortiGate na aba FortiGate.')
+    if not switches: raise ValueError('Adicione pelo menos um switch em Equipamentos.')
+    if mode=='integrado' and not firewalls: raise ValueError('Adicione o FortiGate em Equipamentos.')
     targets=copy.deepcopy(project['macs']) if mode=='lista' or settings['incluir_macs'] else []
     if mode=='lista' and not targets: raise ValueError('Adicione os MACs que deseja pesquisar na aba MACs opcionais.')
     seen_macs=set()
@@ -52,13 +52,13 @@ def build_jobs(project,passwords):
     def password(group):
         key='SW_PASSWORD' if group=='FG_PASSWORD' and settings['mesma_senha'] else group
         value=passwords.get(key,'') or os.getenv(key,'')
-        if not value: raise ValueError('Preencha a senha do grupo '+key+' na aba Coleta.')
+        if not value: raise ValueError('Preencha a senha do grupo '+key+' em Acesso SSH.')
         return value
     jobs=[]; fw_jobs=[]
     for devices,is_fw in ((switches,False),(firewalls,True)):
         names=set(); endpoints=set()
         for row in devices:
-            name=row['nome']; host=row['host']; port=int(row.get('porta') or 22)
+            host=row['host'].strip(); name=row.get('nome','').strip() or host; row['nome']=name; port=int(row.get('porta') or 22)
             if not name or not host or not 1<=port<=65535: raise ValueError('Confira nome, IP/DNS e porta SSH dos equipamentos.')
             if name.casefold() in names or (host.casefold(),port) in endpoints: raise ValueError('Equipamento duplicado: '+name)
             names.add(name.casefold()); endpoints.add((host.casefold(),port))
@@ -77,6 +77,8 @@ class Inventory:
         self.fields=fields; self.defaults=defaults; self.changed=changed
         frame=ttk.Frame(parent); frame.pack(fill='both',expand=True)
         self.table=ttk.Treeview(frame,columns=[k for k,_ in fields],show='headings',selectmode='extended',height=10)
+        basic={'nome','host','plataforma','mac','ip'}
+        self.table.configure(displaycolumns=[k for k,_ in fields if k in basic])
         for key,label in fields:
             self.table.heading(key,text=label); self.table.column(key,width=145,minwidth=95)
         self.table.grid(row=0,column=0,sticky='nsew')
@@ -85,21 +87,31 @@ class Inventory:
         self.table.configure(yscrollcommand=vertical.set,xscrollcommand=horizontal.set)
         frame.rowconfigure(0,weight=1); frame.columnconfigure(0,weight=1)
         form=ttk.LabelFrame(parent,text='Adicionar ou editar item',padding=10); form.pack(fill='x',pady=10)
-        self.vars={}
-        for index,(key,label) in enumerate(fields):
+        self.vars={}; self.extra_widgets=[]
+        ordered=[f for f in fields if f[0] in basic]+[f for f in fields if f[0] not in basic]
+        for index,(key,label) in enumerate(ordered):
             row=index//3; col=(index%3)*2
-            ttk.Label(form,text=label).grid(row=row,column=col,sticky='w',padx=4,pady=5)
+            caption=ttk.Label(form,text=label+(' (opcional)' if key=='nome' else '')); caption.grid(row=row,column=col,sticky='w',padx=4,pady=5)
             var=tk.StringVar(value=defaults.get(key,'')); self.vars[key]=var
             entry=ttk.Combobox(form,textvariable=var,values=['juniper_junos','cisco_ios','cisco_nxos'],state='readonly',width=18) if key=='plataforma' else ttk.Entry(form,textvariable=var,width=18)
             entry.grid(row=row,column=col+1,sticky='ew',padx=4,pady=5); form.columnconfigure(col+1,weight=1)
+            if key not in basic:
+                self.extra_widgets.extend([caption,entry]); caption.grid_remove(); entry.grid_remove()
+        if self.extra_widgets:
+            self.advanced=tk.BooleanVar(value=False)
+            ttk.Checkbutton(form,text='Acesso específico (opcional)',variable=self.advanced,command=self.toggle_extra).grid(row=10,column=0,columnspan=6,sticky='w')
         bar=ttk.Frame(parent)
         buttons=[]
-        for label,callback in [('Adicionar',self.add),('Atualizar selecionado',self.update),('Remover selecionados',self.remove),('Limpar campos',self.clear),('Importar CSV',self.import_csv),('Exportar CSV',self.export_csv)]:
+        for label,callback in [('Adicionar',self.add),('Atualizar selecionado',self.update),('Remover selecionados',self.remove),('Limpar campos',self.clear),('Importar CSV',self.import_csv)]:
             buttons.append(ttk.Button(bar,text=label,command=callback))
         frame.pack_forget(); form.pack_forget()
         bar.pack(side='bottom',fill='x'); form.pack(side='bottom',fill='x',pady=10); frame.pack(fill='both',expand=True)
         arrange_buttons(bar,buttons)
         self.table.bind('<<TreeviewSelect>>',self.select)
+
+    def toggle_extra(self):
+        for widget in self.extra_widgets:
+            widget.grid() if self.advanced.get() else widget.grid_remove()
 
     def rows(self): return [dict(zip((k for k,_ in self.fields),self.table.item(i,'values'))) for i in self.table.get_children()]
     def set_rows(self,rows):
@@ -127,7 +139,7 @@ class Inventory:
         path=filedialog.askopenfilename(filetypes=[('Inventário CSV','*.csv')])
         if not path: return
         try:
-            required=['nome','mac'] if 'mac' in self.vars else ['nome','host']+(['plataforma'] if 'plataforma' in self.vars else [])
+            required=['mac'] if 'mac' in self.vars else ['host']+(['plataforma'] if 'plataforma' in self.vars else [])
             rows=motor.read_csv(path,required,allow_empty=True)
             if self.rows() and not messagebox.askyesno('Importar CSV','Substituir a lista desta aba pelo CSV selecionado?'): return
             self.set_rows(rows)
@@ -148,34 +160,32 @@ class App:
         root.geometry(f'{min(1220,root.winfo_screenwidth()-60)}x{min(850,root.winfo_screenheight()-100)}'); root.minsize(900,560)
         root.columnconfigure(0,weight=1); root.rowconfigure(2,weight=1)
         ttk.Label(root,text='Descoberta e localização de dispositivos',font=('Segoe UI',18,'bold')).grid(row=0,column=0,sticky='w',padx=18,pady=(14,5))
-        ttk.Label(root,text='FortiGate + switches por SSH • resultado no seu modelo Excel').grid(row=1,column=0,sticky='w',padx=18)
+        ttk.Label(root,text='FortiGate + switches por SSH • dispositivos e pendências no Excel').grid(row=1,column=0,sticky='w',padx=18)
         self.tabs=ttk.Notebook(root); self.tabs.grid(row=2,column=0,sticky='nsew',padx=18,pady=12)
-        pages={name:ttk.Frame(self.tabs,padding=12) for name in ('Coleta','FortiGate','Switches','MACs opcionais','Resultados')}
-        for index,(name,frame) in enumerate(pages.items(),1): self.tabs.add(frame,text=f'{index}. {name}')
+        pages={name:ttk.Frame(self.tabs,padding=10) for name in ('Equipamentos','MACs opcionais','Resultados')}
+        for name,frame in pages.items(): self.tabs.add(frame,text=name)
         self.pages=pages; self.settings={k:(tk.BooleanVar(value=v) if isinstance(v,bool) else tk.StringVar(value=v)) for k,v in SETTINGS.items()}
-        panel=pages['Coleta']; settings=ttk.LabelFrame(panel,text='Como coletar',padding=12); settings.pack(fill='x')
-        for index,(key,label) in enumerate([('modo','Modo'),('usuario','Usuário SSH padrão'),('timeout','Tempo de espera (segundos)'),('workers','Switches simultâneos'),('known_hosts','Arquivo known_hosts (opcional)')]):
-            ttk.Label(settings,text=label).grid(row=index,column=0,sticky='w',padx=5,pady=5)
-            field=ttk.Combobox(settings,textvariable=self.settings[key],values=['integrado','lista'],state='readonly') if key=='modo' else ttk.Entry(settings,textvariable=self.settings[key])
-            field.grid(row=index,column=1,sticky='ew',padx=5,pady=5)
-        settings.columnconfigure(1,weight=1)
-        ttk.Button(settings,text='Procurar',command=self.pick_known_hosts).grid(row=4,column=2,padx=5)
-        ttk.Checkbutton(settings,text='Acrescentar os MACs da aba opcional à descoberta integrada',variable=self.settings['incluir_macs']).grid(row=5,column=0,columnspan=3,sticky='w',pady=5)
-        ttk.Label(settings,text='Integrado: descobre por ARP/DHCP e tabelas MAC. Lista: pesquisa somente os MACs informados nos switches.',wraplength=950).grid(row=6,column=0,columnspan=3,sticky='w',pady=4)
-        ttk.Checkbutton(panel,text='Usar a senha padrão dos switches também no FortiGate (SW_PASSWORD → FG_PASSWORD)',variable=self.settings['mesma_senha']).pack(anchor='w',pady=10)
-        self.auth_frame=ttk.LabelFrame(panel,text='Senhas desta sessão — não são salvas no projeto',padding=10); self.auth_frame.pack(fill='both',expand=True)
-        canvas=tk.Canvas(self.auth_frame,highlightthickness=0); scroll=ttk.Scrollbar(self.auth_frame,orient='vertical',command=canvas.yview)
-        canvas.configure(yscrollcommand=scroll.set); scroll.pack(side='right',fill='y'); canvas.pack(fill='both',expand=True)
-        self.auth_body=ttk.Frame(canvas); window=canvas.create_window((0,0),window=self.auth_body,anchor='nw')
-        self.auth_body.columnconfigure(1,weight=1)
-        self.auth_body.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all')))
-        canvas.bind('<Configure>',lambda e:canvas.itemconfigure(window,width=e.width))
-        for key,page,fields,defaults,note in [
-            ('firewalls','FortiGate',FW_FIELDS,{'porta':'22','password_env':'FG_PASSWORD'},'Cadastre o endereço de gerenciamento do cluster HA. FortiOS 7.4.9/7.4.12, sem VDOM. Não é necessário cadastrar cada membro.'),
-            ('switches','Switches',SW_FIELDS,{'porta':'22','plataforma':'juniper_junos','password_env':'SW_PASSWORD'},'Cadastre os switches da mesma unidade. Se houver outra senha, use um grupo diferente e preencha-o na aba Coleta. Enable é opcional.'),
-            ('macs','MACs opcionais',MAC_FIELDS,{},'Opcional no modo integrado. No modo lista, informe os MACs a pesquisar. Aceita aa:bb:cc:dd:ee:ff, aabb.ccdd.eeff ou aabbccddeeff.')]:
-            ttk.Label(pages[page],text=note,wraplength=1100).pack(anchor='w',pady=(0,12))
-            self.editors[key]=Inventory(pages[page],fields,defaults,self.refresh_credentials)
+        panel=pages['Equipamentos']
+        access=ttk.LabelFrame(panel,text='Acesso SSH — reutilizado até fechar',padding=8); access.pack(side='bottom',fill='x',pady=6)
+        ttk.Label(access,text='Usuário').grid(row=0,column=0,sticky='w')
+        ttk.Entry(access,textvariable=self.settings['usuario']).grid(row=0,column=1,sticky='ew',padx=8)
+        ttk.Checkbutton(access,text='Mesma senha no FortiGate e switches',variable=self.settings['mesma_senha']).grid(row=0,column=2,sticky='w')
+        self.auth_body=ttk.Frame(access); self.auth_body.grid(row=1,column=0,columnspan=3,sticky='ew'); self.auth_body.columnconfigure(1,weight=1)
+        access.columnconfigure(1,weight=1)
+        ttk.Label(panel,text='Adicione os switches. O FortiGate é opcional para descobrir IPs e nomes. Sem FortiGate, informe os MACs na próxima aba.',wraplength=1000).pack(anchor='w',pady=5)
+        equipment=ttk.Notebook(panel);equipment.pack(fill='both',expand=True)
+        for key,title,fields,defaults in [
+            ('switches','Switches',SW_FIELDS,{'porta':'22','plataforma':'juniper_junos','password_env':'SW_PASSWORD'}),
+            ('firewalls','FortiGate (opcional)',FW_FIELDS,{'porta':'22','password_env':'FG_PASSWORD'})]:
+            page=ttk.Frame(equipment,padding=6);equipment.add(page,text=title)
+            self.editors[key]=Inventory(page,fields,defaults,self.refresh_credentials)
+        ttk.Label(pages['MACs opcionais'],text='Informe somente os MACs que deseja acrescentar. Nome e IP são opcionais. Com FortiGate, a descoberta é automática.',wraplength=1000).pack(anchor='w')
+        self.editors['macs']=Inventory(pages['MACs opcionais'],MAC_FIELDS,{},self.refresh_credentials)
+        self.options=tk.Toplevel(root);self.options.title('Opções de conexão');self.options.withdraw();self.options.protocol('WM_DELETE_WINDOW',self.options.withdraw)
+        for i,(key,label) in enumerate([('timeout','Tempo de espera (s)'),('workers','Consultas simultâneas'),('known_hosts','Arquivo known_hosts (opcional)')]):
+            ttk.Label(self.options,text=label).grid(row=i,column=0,padx=10,pady=8,sticky='w')
+            ttk.Entry(self.options,textvariable=self.settings[key],width=45).grid(row=i,column=1,padx=10,pady=8)
+        ttk.Button(self.options,text='Selecionar known_hosts',command=self.pick_known_hosts).grid(row=3,column=1,pady=8)
         result=pages['Resultados']
         self.summary=tk.StringVar(value='Nenhuma coleta executada nesta sessão.')
         ttk.Label(result,textvariable=self.summary,wraplength=1050).pack(anchor='w',pady=5)
@@ -191,11 +201,13 @@ class App:
         self.results.configure(yscrollcommand=result_scroll.set,xscrollcommand=result_horizontal.set)
         result_grid.rowconfigure(0,weight=1); result_grid.columnconfigure(0,weight=1)
         self.results.tag_configure('review',foreground='#9A3412'); self.results.tag_configure('found',foreground='#166534')
-        ttk.Label(result,text='Andamento e erros de consulta').pack(anchor='w',pady=(10,3))
-        log_frame=ttk.Frame(result); log_frame.pack(fill='both',expand=True)
+
+        self.details=tk.Toplevel(root);self.details.title('Detalhes da coleta');self.details.withdraw();self.details.protocol('WM_DELETE_WINDOW',self.details.withdraw)
+        log_frame=ttk.Frame(self.details); log_frame.pack(fill='both',expand=True)
+        ttk.Button(result,text='Detalhes da coleta',command=self.details.deiconify).pack(anchor='w')
         self.log=tk.Text(log_frame,height=7,wrap='word',state='disabled',font=('Consolas',10)); self.log.pack(side='left',fill='both',expand=True)
         log_scroll=ttk.Scrollbar(log_frame,orient='vertical',command=self.log.yview); log_scroll.pack(side='right',fill='y'); self.log.configure(yscrollcommand=log_scroll.set)
-        self.status=tk.StringVar(value='Confira os cadastros, preencha as senhas e clique em Iniciar coleta.')
+        self.status=tk.StringVar(value='Adicione switches, informe o acesso SSH e clique em Iniciar coleta.')
         status_label=ttk.Label(root,textvariable=self.status,wraplength=850)
         status_label.grid(row=3,column=0,sticky='ew',padx=18)
         status_label.bind('<Configure>',lambda e:status_label.configure(wraplength=max(100,e.width)))
@@ -205,7 +217,7 @@ class App:
         self.start_button=ttk.Button(bar,text='Iniciar coleta',command=lambda:self.safe(self.start))
         self.excel_button=ttk.Button(bar,text='Abrir Excel',command=lambda:self.safe(lambda:self.open_result(False)),state='disabled')
         self.folder_button=ttk.Button(bar,text='Abrir pasta do resultado',command=lambda:self.safe(lambda:self.open_result(True)),state='disabled')
-        arrange_buttons(bar,[open_button,save_button,self.start_button,self.excel_button,self.folder_button])
+        arrange_buttons(bar,[self.start_button,self.excel_button,open_button,save_button,ttk.Button(bar,text='Opções',command=self.options.deiconify)])
         self.settings['modo'].trace_add('write',lambda *args:self.refresh_credentials())
         self.settings['mesma_senha'].trace_add('write',lambda *args:self.refresh_credentials())
         self.load_initial(); self.refresh_credentials()
@@ -218,21 +230,23 @@ class App:
         if not hasattr(self,'auth_body'): return
         groups=set()
         for key,editor in self.editors.items():
-            if key=='macs' or (key=='firewalls' and self.settings['modo'].get()=='lista'): continue
+            if key=='macs' or (key=='firewalls' and not editor.rows()): continue
             for row in editor.rows():
                 groups.add(row.get('password_env') or ('FG_PASSWORD' if key=='firewalls' else 'SW_PASSWORD'))
                 if row.get('secret_env'): groups.add(row['secret_env'])
         groups.add('SW_PASSWORD')
-        if self.settings['modo'].get()=='integrado': groups.add('FG_PASSWORD')
+        if self.editors.get('firewalls') and self.editors['firewalls'].rows(): groups.add('FG_PASSWORD')
         if self.settings['mesma_senha'].get(): groups.discard('FG_PASSWORD')
         for child in self.auth_body.winfo_children(): child.destroy()
         for index,group in enumerate(sorted(groups)):
             if group not in self.credentials: self.credentials[group]=tk.StringVar()
             label={'SW_PASSWORD':'Senha dos switches','FG_PASSWORD':'Senha do FortiGate'}.get(group,'Senha / enable')
-            ttk.Label(self.auth_body,text=label+' ('+group+')').grid(row=index,column=0,sticky='w',padx=5,pady=6)
+            ttk.Label(self.auth_body,text=label+(' ('+group+')' if group not in ('SW_PASSWORD','FG_PASSWORD') else '')).grid(row=index,column=0,sticky='w',padx=5,pady=6)
             ttk.Entry(self.auth_body,textvariable=self.credentials[group],show='•').grid(row=index,column=1,sticky='ew',padx=5,pady=6)
 
     def project(self):
+        self.settings['modo'].set('integrado' if self.editors['firewalls'].rows() else 'lista')
+        self.settings['incluir_macs'].set(bool(self.editors['macs'].rows()))
         return {'schema':1,'settings':{k:v.get() for k,v in self.settings.items()},**{k:e.rows() for k,e in self.editors.items()}}
 
     def apply_project(self,data):
@@ -247,7 +261,6 @@ class App:
         for key in ('switches','firewalls','macs'):
             if not isinstance(data.get(key),list) or any(not isinstance(row,dict) or any(not isinstance(v,(str,int)) for v in row.values()) for row in data[key]): raise ValueError('Lista inválida no projeto: '+key)
         for key,var in self.settings.items(): var.set(settings[key])
-        for var in self.credentials.values(): var.set('')
         for key,editor in self.editors.items(): editor.set_rows(data[key])
 
     def load_initial(self):
@@ -322,13 +335,11 @@ class App:
 
     def show_result(self,result):
         self.last_path=Path(result['path']); tables=result['tables']; rows=tables['Localização']
-        hits={}
-        for hit in tables['Ocorrências']: hits.setdefault(hit['MAC'],[]).append(hit)
-        for row in rows[:500]:
-            found=hits.get(row['MAC'],[])
-            values=[row['MAC'] or 'A revisar',row['IP dispositivo'],found[0]['Switch'] if len(found)==1 else 'A revisar',found[0]['Porta'] if len(found)==1 else 'A revisar',row['Resultado']]
-            self.results.insert('','end',values=values,tags=('review' if row['Resultado'].startswith('A revisar') else 'found',))
-        self.summary.set(f"{len(rows)} registros • {len(tables['A revisar'])} a revisar. "+('Há falhas de coleta; confira as abas Coleta no Excel. ' if result['code'] else '')+'Prévia de até 500 registros; Excel contém todos.')
+        useful=motor.useful_rows(tables)
+        for row in useful[:500]:
+            self.results.insert('','end',values=[row['MAC'],row['IP'],row['Switch'],row['Porta'],row['Resultado']],tags=('review' if row['Resultado']!='Localizado' else 'found',))
+        pending=sum(r['Resultado']!='Localizado' for r in useful)
+        self.summary.set(f"{len(rows)} dispositivos • {pending} a revisar. "+('Há consultas com falha: consulte Pendências no Excel. ' if result['code'] else '')+'Prévia de até 500 registros.')
         self.status.set('Excel salvo: '+str(self.last_path)); self.excel_button.configure(state='normal'); self.folder_button.configure(state='normal')
 
     def open_result(self,folder):

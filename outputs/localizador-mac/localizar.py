@@ -244,8 +244,8 @@ def analyze(targets,results):
         candidates=[f"{r['Switch']} / {r['Porta']} / VLAN {r['VLAN/nome']}" for r in access]
         status='Não encontrado nesta coleta' if not found else 'Uma porta candidata de acesso' if len(candidates)==1 else 'Múltiplas candidatas; revisar' if candidates else 'Aprendido em enlace/agregação ou modo não identificado'
         if not target['mac']: status='MAC não identificado; porta não determinada'
-        if incomplete: status+=' — cobertura parcial'
-        if not target['mac'] or len(candidates)!=1 or incomplete or target.get('revisar'): status='A revisar — '+status
+        if incomplete and not candidates: status+='; coleta incompleta'
+        if not target['mac'] or len(candidates)!=1 or target.get('revisar'): status='A revisar — '+status
         summary.append({'Dispositivo':target['nome'],'MAC':display(target['mac']),'IP dispositivo':target.get('ip',''),'Resultado':status,
                         'Origem':target.get('origem','Lista manual'),'Interface firewall':target.get('interface_firewall',''),
                         'Candidatas':'; '.join(candidates),'Ocorrências':len(found),'Switches com cobertura parcial/falha':', '.join(incomplete),
@@ -254,24 +254,26 @@ def analyze(targets,results):
             'Entradas':len(d['entries']),'Coleta UTC':d['at'],'Erros':'; '.join(e['command']+': '+e['error'] for e in d['errors'])} for d in results]}
 
 
+def useful_rows(tables):
+    hits={}
+    for hit in access_locations(tables['Ocorrências']):hits.setdefault(hit['MAC'],[]).append(hit)
+    rows=[]
+    for item in tables['Localização']:
+        candidates=hits.get(item['MAC'],[]);one=candidates[0] if len(candidates)==1 else {}
+        if not item['MAC']:status='A revisar: MAC ausente'
+        elif len(candidates)>1:status='A revisar: mais de uma porta'
+        elif not candidates:status='A revisar: porta não localizada'
+        elif item['Resultado'].startswith('A revisar'):status='A revisar: conflito nos dados'
+        else:status='Localizado'
+        name=item['Dispositivo'] if item['Dispositivo'] not in ('Nome não identificado','Nome não informado') else ''
+        rows.append({'Dispositivo':name,'IP':item.get('IP dispositivo','').replace('\n',', '),'MAC':item['MAC'],
+                     'Switch':one.get('Switch',''),'Porta':one.get('Porta',''),'VLAN':one.get('VLAN/nome',''),'Resultado':status})
+    return rows
+
+
 def excel(tables,path):
     from modelo_excel import prepare_template
-    from openpyxl.styles import Font,PatternFill,Alignment
-    from openpyxl.utils import get_column_letter
-    w=prepare_template(tables)
-    for name,rows in tables.items():
-        s=w.create_sheet(name); headers=list(dict.fromkeys(k for r in rows for k in r)) or ['Informação']
-        s.append(headers)
-        if not rows: s.append(['Sem ocorrências; confira a cobertura na aba Coleta.'])
-        for r in rows: s.append([r.get(k,'') for k in headers])
-        for row in s:
-            for c in row:
-                if isinstance(c.value,str): c.value=re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]','',c.value)[:32767]; c.data_type='s'
-                c.alignment=Alignment(vertical='top',wrap_text=True)
-        for c in s[1]: c.font=Font(color='FFFFFF',bold=True); c.fill=PatternFill('solid',fgColor='17365D')
-        for i in range(1,len(headers)+1): s.column_dimensions[get_column_letter(i)].width=30
-        s.freeze_panes='C2'; s.auto_filter.ref=s.dimensions
-    with path.open('xb') as f: w.save(f)
+    with path.open('xb') as f:prepare_template(tables).save(f)
 
 
 def run_collection(jobs,fw_jobs,targets,args,output_dir=None,on_event=None):
