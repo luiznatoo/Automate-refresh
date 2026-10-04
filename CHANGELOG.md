@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 2.1.8 — 2026-10-04
+
+- Localizador em tela única: colar IPs, informar acesso e localizar.
+- MACs e opções específicas fora do fluxo principal; importações preservam metadados.
+- Oito testes do localizador.
+
+
 ## 2.1.7 — 2026-10-04
 
 - Localizador com três abas, credenciais de sessão e opções avançadas recolhidas.

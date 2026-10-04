@@ -42,4 +42,21 @@ class Tests(unittest.TestCase):
    self.assertEqual(app.credentials['SW_PASSWORD'].get(),'test');self.assertNotIn('test',str(app.project()))
    self.assertEqual(tuple(app.editors['switches'].table.cget('displaycolumns')),('nome','host','plataforma'))
   finally:app.close()
+class SimpleScreenTests(unittest.TestCase):
+ def test_single_screen_and_metadata(self):
+  import tkinter as tk
+  root=tk.Tk();root.withdraw()
+  with patch.object(ui.App,'load_initial'),patch('refresh_core.inventory.preload'):
+   app=ui.SimpleApp(root)
+  try:
+   self.assertFalse(app.tabs.winfo_ismapped());self.assertEqual(app.start_button.cget('text'),'Localizar')
+   app.switch_ips.insert('1.0','192.0.2.10\n192.0.2.11');app.firewall_ip.set('192.0.2.1')
+   app.credentials['SW_PASSWORD'].set('session-test')
+   data=app.project();self.assertEqual(len(data['switches']),2);self.assertEqual(data['settings']['modo'],'integrado')
+   self.assertEqual(app.credentials['SW_PASSWORD'].get(),'session-test');self.assertNotIn('session-test',str(data))
+   data['switches'][0].update(nome='CUSTOM',plataforma='cisco_ios',porta='2222')
+   app.apply_project(data);self.assertEqual(app.project()['switches'][0]['porta'],'2222')
+   app.firewall_ip.set('');app.mac_text.insert('1.0','aa:bb:cc:dd:ee:ff');data=app.project()
+   self.assertEqual(data['settings']['modo'],'lista');self.assertEqual(data['macs'][0]['mac'],'aabbccddeeff')
+  finally:app.close()
 if __name__=='__main__':unittest.main()

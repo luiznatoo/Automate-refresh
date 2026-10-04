@@ -2,12 +2,13 @@
 
 ## Uso
 
-1. Em Equipamentos, cadastre IP e plataforma dos switches ou importe CSV. Nome é opcional; vazio utiliza o IP.
-2. Cadastre o FortiGate para descobrir dispositivos por ARP/DHCP. Sem FortiGate, informe os MACs na aba MACs opcionais.
-3. Informe usuário e senha SSH uma vez. Por padrão a senha é compartilhada; desmarque a opção se o firewall usar outra senha.
-4. Clique em Iniciar coleta e depois Abrir Excel.
+1. Cole os IPs dos switches, um por linha, e escolha o tipo. Também é possível importar CSV.
+2. Informe o IP do FortiGate se quiser descoberta automática de IPs e nomes.
+3. Informe usuário e senha; clique em Localizar e depois Abrir Excel.
 
-Acesso específico por equipamento e Opções mantêm porta, grupos de senha, arquivo known_hosts, timeout e paralelismo para situações que precisam desses ajustes. Os projetos antigos continuam aceitos. Credenciais ficam somente na sessão.
+Sem FortiGate, informe a lista no botão MACs opcionais. Em Opções ficam senha diferente para firewall, grupos específicos, tempo de espera, paralelismo, known_hosts, cadastros salvos e detalhes da coleta. A senha permanece somente na sessão.
+
+Uma única tela concentra a coleta. O tipo selecionado é usado para IPs novos; tipos e acessos específicos importados são preservados. CSVs e cadastros antigos continuam aceitos.
 
 ## Resultado
 

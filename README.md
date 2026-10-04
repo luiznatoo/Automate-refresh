@@ -2,7 +2,7 @@
 
 Ferramentas desktop em Python para auditoria e hardening FortiGate, mapeamento de switches, localização de dispositivos, comparação pré/pós-RDM e geração de configurações.
 
-Versão atual: **2.1.7**. Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
+Versão atual: **2.1.8**. Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
 
 ## Executar no Windows
 

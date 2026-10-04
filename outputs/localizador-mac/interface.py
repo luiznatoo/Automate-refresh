@@ -239,6 +239,7 @@ class App:
         if self.settings['mesma_senha'].get(): groups.discard('FG_PASSWORD')
         for child in self.auth_body.winfo_children(): child.destroy()
         for index,group in enumerate(sorted(groups)):
+            if getattr(self,'simple_layout',False) and group=='SW_PASSWORD': continue
             if group not in self.credentials: self.credentials[group]=tk.StringVar()
             label={'SW_PASSWORD':'Senha dos switches','FG_PASSWORD':'Senha do FortiGate'}.get(group,'Senha / enable')
             ttk.Label(self.auth_body,text=label+(' ('+group+')' if group not in ('SW_PASSWORD','FG_PASSWORD') else '')).grid(row=index,column=0,sticky='w',padx=5,pady=6)
@@ -351,8 +352,90 @@ class App:
         self.root.after_cancel(self.poll_id); self.root.destroy()
 
 
+
+class SimpleApp(App):
+    """One screen for daily collection; legacy inventory preserves imported overrides."""
+    def __init__(self,root):
+        super().__init__(root)
+        self.simple_layout=True
+        for widget in root.winfo_children():
+            if not isinstance(widget,tk.Toplevel):widget.grid_remove()
+        root.geometry(f'{min(780,root.winfo_screenwidth()-60)}x{min(680,root.winfo_screenheight()-100)}');root.minsize(650,560)
+        root.rowconfigure(2,weight=0);root.rowconfigure(0,weight=1)
+        page=ttk.Frame(root,padding=20);page.grid(row=0,column=0,sticky='nsew');page.columnconfigure(0,weight=1)
+        ttk.Label(page,text='Localizar dispositivos',font=('Segoe UI',18,'bold')).grid(row=0,column=0,sticky='w',pady=(0,12))
+        ttk.Label(page,text='FortiGate — IP opcional').grid(row=1,column=0,sticky='w')
+        self.firewall_ip=tk.StringVar();ttk.Entry(page,textvariable=self.firewall_ip).grid(row=2,column=0,sticky='ew',pady=(4,10))
+        header=ttk.Frame(page);header.grid(row=3,column=0,sticky='ew');header.columnconfigure(0,weight=1)
+        ttk.Label(header,text='Switches — cole um IP por linha').grid(row=0,column=0,sticky='w')
+        ttk.Button(header,text='Importar CSV',command=lambda:self.safe(self.import_switches)).grid(row=0,column=1)
+        self.switch_ips=tk.Text(page,height=5,wrap='none');self.switch_ips.grid(row=4,column=0,sticky='nsew',pady=4);page.rowconfigure(4,weight=1)
+        types=ttk.Frame(page);types.grid(row=5,column=0,sticky='ew',pady=(4,12))
+        ttk.Label(types,text='Tipo dos novos switches').pack(side='left')
+        self.platform=tk.StringVar(value='Juniper');self.platform_map={'Juniper':'juniper_junos','Cisco IOS':'cisco_ios','Cisco Nexus':'cisco_nxos'}
+        ttk.Combobox(types,textvariable=self.platform,values=list(self.platform_map),state='readonly',width=18).pack(side='left',padx=10)
+        auth=ttk.Frame(page);auth.grid(row=6,column=0,sticky='ew');auth.columnconfigure(1,weight=1);auth.columnconfigure(3,weight=1)
+        ttk.Label(auth,text='Usuário').grid(row=0,column=0)
+        ttk.Entry(auth,textvariable=self.settings['usuario']).grid(row=0,column=1,sticky='ew',padx=(8,15))
+        ttk.Label(auth,text='Senha').grid(row=0,column=2)
+        self.credentials.setdefault('SW_PASSWORD',tk.StringVar())
+        ttk.Entry(auth,textvariable=self.credentials['SW_PASSWORD'],show='•').grid(row=0,column=3,sticky='ew',padx=(8,0))
+        ttk.Label(page,text='A senha fica somente nesta sessão.').grid(row=7,column=0,sticky='w',pady=(4,12))
+        self.mac_window=tk.Toplevel(root);self.mac_window.title('MACs opcionais');self.mac_window.withdraw();self.mac_window.protocol('WM_DELETE_WINDOW',self.mac_window.withdraw)
+        ttk.Label(self.mac_window,text='Cole um MAC por linha. Sem FortiGate, esta lista é necessária.').pack(padx=15,pady=10)
+        self.mac_text=tk.Text(self.mac_window,height=12,width=55);self.mac_text.pack(fill='both',expand=True,padx=15)
+        ttk.Button(self.mac_window,text='Pronto',command=self.mac_window.withdraw).pack(pady=10)
+        actions=ttk.Frame(page);actions.grid(row=8,column=0,sticky='ew')
+        self.start_button=ttk.Button(actions,text='Localizar',command=lambda:self.safe(self.start));self.start_button.pack(side='left')
+        self.excel_button=ttk.Button(actions,text='Abrir Excel',state='disabled',command=lambda:self.safe(lambda:self.open_result(False)));self.excel_button.pack(side='left',padx=8)
+        ttk.Button(actions,text='MACs opcionais',command=self.mac_window.deiconify).pack(side='left',padx=4)
+        ttk.Button(actions,text='Opções',command=self.options.deiconify).pack(side='right')
+        self.progress=ttk.Progressbar(page,mode='determinate');self.progress.grid(row=9,column=0,sticky='ew',pady=(15,6))
+        ttk.Label(page,textvariable=self.status,wraplength=690).grid(row=10,column=0,sticky='w')
+        ttk.Label(page,textvariable=self.summary,wraplength=690).grid(row=11,column=0,sticky='w',pady=6)
+        ttk.Checkbutton(self.options,text='Mesma senha no firewall e switches',variable=self.settings['mesma_senha']).grid(row=4,column=0,columnspan=2,sticky='w',padx=10)
+        self.auth_body=ttk.Frame(self.options);self.auth_body.grid(row=5,column=0,columnspan=2,sticky='ew');self.auth_body.columnconfigure(1,weight=1)
+        for i,(label,fn) in enumerate([('Abrir cadastro',self.load_project),('Salvar cadastro',self.save_project),('Detalhes da coleta',self.details.deiconify)]):
+            ttk.Button(self.options,text=label,command=lambda f=fn:self.safe(f)).grid(row=6+i,column=0,columnspan=2,pady=5)
+        self.fill_simple();self.refresh_credentials()
+        self.status.set('Informe os equipamentos e clique em Localizar.')
+
+    def fill_simple(self):
+        if not hasattr(self,'switch_ips'):return
+        self.switch_ips.delete('1.0','end');self.switch_ips.insert('1.0','\n'.join(r['host'] for r in self.editors['switches'].rows()))
+        self.firewall_ip.set(', '.join(r['host'] for r in self.editors['firewalls'].rows()))
+        self.mac_text.delete('1.0','end');self.mac_text.insert('1.0','\n'.join(r['mac'] for r in self.editors['macs'].rows()))
+
+    def import_switches(self):
+        self.project()
+        self.editors['switches'].import_csv();self.fill_simple()
+
+    def apply_project(self,data):
+        super().apply_project(data);self.fill_simple()
+
+    def project(self):
+        if hasattr(self,'switch_ips'):
+            old={r['host']:r for r in self.editors['switches'].rows()}
+            hosts=[h.strip() for h in self.switch_ips.get('1.0','end').splitlines() if h.strip()]
+            self.editors['switches'].set_rows([old.get(h,{'host':h,'nome':'','plataforma':self.platform_map[self.platform.get()]}) for h in hosts])
+            old={r['host']:r for r in self.editors['firewalls'].rows()}
+            hosts=[h.strip() for h in self.firewall_ip.get().split(',') if h.strip()]
+            self.editors['firewalls'].set_rows([old.get(h,{'host':h,'nome':''}) for h in hosts])
+            old={motor.mac(r['mac']):r for r in self.editors['macs'].rows() if r.get('mac')}
+            addresses=[motor.mac(a.strip()) for a in self.mac_text.get('1.0','end').splitlines() if a.strip()]
+            self.editors['macs'].set_rows([old.get(a,{'mac':a,'nome':'','ip':''}) for a in addresses])
+        return super().project()
+
+    def start(self):
+        # Sync visible inputs before collecting credentials for newly imported groups.
+        self.project()
+        super().start()
+
+
+App=SimpleApp
+
 def main():
-    root=tk.Tk(); App(root); root.mainloop()
+    root=tk.Tk(); SimpleApp(root); root.mainloop()
 
 
 if __name__=='__main__': main()
