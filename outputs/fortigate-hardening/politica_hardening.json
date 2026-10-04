@@ -1,0 +1,62 @@
+{
+  "enabled": [
+    "timeout",
+    "bloqueio",
+    "tls",
+    "ntp",
+    "banner_pre",
+    "banner_post",
+    "telemetria_fds",
+    "telemetria_rating",
+    "ssh_grace",
+    "https_redirect",
+    "maintainer",
+    "static_ciphers",
+    "dh_params",
+    "faz_crypto",
+    "usb_config",
+    "usb_image",
+    "event_log",
+    "texto_pre",
+    "texto_post",
+    "if_wan_role",
+    "if_wan_arpforward",
+    "if_wan_icmp-send-redirect",
+    "if_wan_icmp-accept-redirect",
+    "if_wan_lldp-transmission",
+    "if_lan1_role",
+    "if_lan2_role",
+    "if_lan2_icmp-send-redirect",
+    "if_lan2_icmp-accept-redirect",
+    "if_lan2_lldp-transmission",
+    "if_lan3_role",
+    "if_lan4_role"
+  ],
+  "timeout_max": 5,
+  "tentativas_max": 3,
+  "bloqueio_min": 600,
+  "senha_min": 12,
+  "mapa_interfaces": {
+    "wan": "wan",
+    "lan1": "lan1",
+    "lan2": "lan2",
+    "lan3": "lan3",
+    "lan4": "lan4"
+  },
+  "banners": {
+    "pre": "================================================================\n                       Bem-vindo!\n       Todos as conexoes sao monitoradas e gravadas\nDesconecte IMEDIATAMENTE se voce nao e um usuario autorizado!\n\n                        Welcome!\n          All connections are monitored and record\n  Disconnect IMMEDIATELY if you are not an autorized user!\n================================================================",
+    "post": "================================================================\n“O ACESSO NÃO AUTORIZADO A ESTE DISPOSITIVO É PROIBIDO!\n\nVocê deve ter permissão explícita e autorizada para acessar ou configurar este dispositivo.\nTentativas e ações não autorizadas para acessar ou usar este sistema podem resultar em ação disciplinar administrativa, penalidades civis e/ou criminais.\nTodas as atividades realizadas neste dispositivo são registradas e monitoradas.”\n\n================================================================\n\n%%LAST_SUCCESSFUL_LOGIN%%\n%%LAST_FAILED_LOGIN%%"
+  },
+  "tls_permitidos": [
+    "tlsv1-2"
+  ],
+  "exceptions": [],
+  "correcoes": {
+    "redes_gerencia": [],
+    "origem_ssh": "",
+    "interface_gerencia": "",
+    "mfa_email": {},
+    "smtp_validado": false,
+    "mfa_tokens": {}
+  }
+}

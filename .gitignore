@@ -1,0 +1,32 @@
+# Dados operacionais e credenciais: nunca versionar
+**/dados/
+**/logs/
+**/resultados/
+**/relatorios/
+**/coletas/
+**/backups/
+**/bases/
+*.conf
+*.csv
+*.xlsx
+*.xls
+*.jsonl
+*.enc
+*.pem
+*.key
+.env
+.env.*
+known_hosts*
+**/cadastro.json
+**/artifacts/
+# Artefatos de execução e distribuição
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.exe
+*.zip
+*.sha256
+# Catálogos locais acompanham suas bases privadas
