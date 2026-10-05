@@ -5,7 +5,7 @@ import runpy
 import sys
 import json
 
-TOOLS={'fortigate-hardening':'interface.py','switch-mapper':'interface.py','localizador-mac':'interface.py',
+TOOLS={'fortigate-hardening':'interface.py','localizador-mac':'interface.py',
        'fortigate-config':'gerar.py','fortiswitch-config':'gerar.py'}
 
 

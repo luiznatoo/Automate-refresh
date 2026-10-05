@@ -131,7 +131,7 @@ def parse_lldp(raw,junos):
     return rows
 
 
-def collect(d,password,secret,args,folder):
+def collect(d,password,secret,args,folder,connection=None):
     from refresh_core.ssh import connect_switch as ConnectHandler
     result={'name':d['nome'],'host':d['host'],'at':datetime.now(timezone.utc).isoformat(),
             'entries':[],'ports':{},'lldp':[],'aliases':[d['nome'],d['host']],'errors':[],'fdb_ok':False}
@@ -146,7 +146,9 @@ def collect(d,password,secret,args,folder):
                      username=d['usuario'],password=password,secret=secret,ssh_strict=True,system_host_keys=True,
                      conn_timeout=args.timeout,auth_timeout=args.timeout,banner_timeout=args.timeout)
         if args.known_hosts: options.update(alt_host_keys=True,alt_key_file=str(args.known_hosts))
-        with ConnectHandler(**options) as conn:
+        if d.get('key_file'):options.update(use_keys=True,key_file=d['key_file'])
+        from contextlib import nullcontext
+        with (nullcontext(connection) if connection is not None else ConnectHandler(**options)) as conn:
             if secret and not junos: conn.enable()
             def query(command,save=True):
                 raw=conn.send_command(command,read_timeout=args.timeout)

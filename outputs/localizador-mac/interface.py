@@ -10,11 +10,12 @@ from types import SimpleNamespace
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import localizar as motor
+import rede
 
-SW_FIELDS=[('nome','Nome'),('host','IP / DNS'),('plataforma','Plataforma'),('porta','Porta SSH'),('usuario','Usuário específico'),('password_env','Grupo de senha'),('secret_env','Grupo enable')]
+SW_FIELDS=[('nome','Nome'),('host','IP / DNS'),('plataforma','Plataforma'),('porta','Porta SSH'),('usuario','Usuário específico'),('password_env','Grupo de senha'),('secret_env','Grupo enable'),('key_file','Chave SSH opcional')]
 FW_FIELDS=[('nome','Nome'),('host','IP / DNS do cluster'),('porta','Porta SSH'),('usuario','Usuário específico'),('password_env','Grupo de senha')]
 MAC_FIELDS=[('nome','Nome do dispositivo'),('mac','MAC address'),('ip','IP opcional')]
-SETTINGS={'modo':'integrado','usuario':'','timeout':'90','workers':'4','known_hosts':'','incluir_macs':False,'mesma_senha':True}
+SETTINGS={'modo':'integrado','usuario':'','timeout':'90','workers':'4','known_hosts':'','incluir_macs':False,'mesma_senha':True,'rapido':False}
 
 
 def arrange_buttons(frame,buttons):
@@ -38,11 +39,11 @@ def build_jobs(project,passwords):
     if not 5<=timeout<=600 or not 1<=workers<=16: raise ValueError('Tempo de espera: 5 a 600 segundos. Consultas simultâneas: 1 a 16.')
     known=settings['known_hosts'].strip()
     if known and not Path(known).is_file(): raise ValueError('Arquivo known_hosts não encontrado')
-    switches=copy.deepcopy(project['switches']); firewalls=copy.deepcopy(project['firewalls']) if mode=='integrado' else []
+    switches=copy.deepcopy(project['switches']); firewalls=copy.deepcopy(project['firewalls']) if mode=='integrado' and not settings.get('rapido') else []
     if not switches: raise ValueError('Adicione pelo menos um switch em Equipamentos.')
-    if mode=='integrado' and not firewalls: raise ValueError('Adicione o FortiGate em Equipamentos.')
+    if mode=='integrado' and not settings.get('rapido') and not firewalls: raise ValueError('Adicione o FortiGate em Equipamentos.')
     targets=copy.deepcopy(project['macs']) if mode=='lista' or settings['incluir_macs'] else []
-    if mode=='lista' and not targets: raise ValueError('Adicione os MACs que deseja pesquisar na aba MACs opcionais.')
+    if settings.get('rapido') and not targets: raise ValueError('Adicione os MACs que deseja pesquisar na aba MACs opcionais.')
     seen_macs=set()
     for row in targets:
         row['mac']=motor.mac(row['mac'])
@@ -66,10 +67,10 @@ def build_jobs(project,passwords):
             row['usuario']=row.get('usuario') or settings['usuario'].strip()
             if not row['usuario']: raise ValueError('Informe o usuário SSH para '+name)
             row['porta']=port
-            pw=password(row.get('password_env') or ('FG_PASSWORD' if is_fw else 'SW_PASSWORD'))
+            pw='' if row.get('key_file') and not is_fw else password(row.get('password_env') or ('FG_PASSWORD' if is_fw else 'SW_PASSWORD'))
             if is_fw: fw_jobs.append((row,pw))
             else: jobs.append((row,pw,password(row['secret_env']) if row.get('secret_env') else ''))
-    return jobs,fw_jobs,targets,SimpleNamespace(modo=mode,timeout=timeout,workers=workers,known_hosts=Path(known) if known else None)
+    return jobs,fw_jobs,targets,SimpleNamespace(modo=mode,timeout=timeout,workers=workers,known_hosts=Path(known) if known else None,rapido=settings.get('rapido',False))
 
 
 class Inventory:
@@ -140,7 +141,10 @@ class Inventory:
         if not path: return
         try:
             required=['mac'] if 'mac' in self.vars else ['host']+(['plataforma'] if 'plataforma' in self.vars else [])
-            rows=motor.read_csv(path,required,allow_empty=True)
+            if 'plataforma' in self.vars:
+                from mapear import read_inventory
+                rows=read_inventory(path)
+            else:rows=motor.read_csv(path,required,allow_empty=True)
             if self.rows() and not messagebox.askyesno('Importar CSV','Substituir a lista desta aba pelo CSV selecionado?'): return
             self.set_rows(rows)
         except (ValueError,OSError) as exc: messagebox.showerror('Erro no CSV',str(exc))
@@ -156,7 +160,7 @@ class Inventory:
 class App:
     def __init__(self,root):
         self.root=root; self.events=queue.Queue(); self.running=False; self.last_path=None; self.credentials={}; self.editors={}
-        root.title('Localizador de dispositivos • FortiGate e switches')
+        root.title('Mapeamento de Rede')
         root.geometry(f'{min(1220,root.winfo_screenwidth()-60)}x{min(850,root.winfo_screenheight()-100)}'); root.minsize(900,560)
         root.columnconfigure(0,weight=1); root.rowconfigure(2,weight=1)
         ttk.Label(root,text='Descoberta e localização de dispositivos',font=('Segoe UI',18,'bold')).grid(row=0,column=0,sticky='w',padx=18,pady=(14,5))
@@ -232,7 +236,7 @@ class App:
         for key,editor in self.editors.items():
             if key=='macs' or (key=='firewalls' and not editor.rows()): continue
             for row in editor.rows():
-                groups.add(row.get('password_env') or ('FG_PASSWORD' if key=='firewalls' else 'SW_PASSWORD'))
+                if not row.get('key_file'):groups.add(row.get('password_env') or ('FG_PASSWORD' if key=='firewalls' else 'SW_PASSWORD'))
                 if row.get('secret_env'): groups.add(row['secret_env'])
         groups.add('SW_PASSWORD')
         if self.editors.get('firewalls') and self.editors['firewalls'].rows(): groups.add('FG_PASSWORD')
@@ -251,6 +255,8 @@ class App:
         return {'schema':1,'settings':{k:v.get() for k,v in self.settings.items()},**{k:e.rows() for k,e in self.editors.items()}}
 
     def apply_project(self,data):
+        if isinstance(data,dict) and data.get('tipo')=='mapeamento-switches':
+            data={'schema':1,'settings':{**SETTINGS,**{k:v for k,v in data.get('settings',{}).items() if k in SETTINGS}},'switches':data.get('switches',[]),'firewalls':self.editors['firewalls'].rows(),'macs':self.editors['macs'].rows()}
         if not isinstance(data,dict) or data.get('schema')!=1 or not isinstance(data.get('settings',{}),dict): raise ValueError('Formato de projeto não reconhecido')
         settings={**SETTINGS,**{k:v for k,v in data.get('settings',{}).items() if k in SETTINGS}}
         for key,default in SETTINGS.items():
@@ -272,6 +278,10 @@ class App:
                 for key in self.editors:
                     source=motor.BASE/(key+'.csv')
                     if source.exists(): self.editors[key].set_rows(motor.read_csv(source,['nome'],allow_empty=True))
+            legacy=motor.BASE/'inventario_portas.csv'
+            if not self.editors['switches'].rows() and legacy.exists():
+                from mapear import read_inventory
+                self.editors['switches'].set_rows(read_inventory(legacy))
         except (ValueError,OSError,TypeError) as exc: self.status.set('Cadastro não carregado: '+str(exc))
 
     def save_project(self):
@@ -308,7 +318,7 @@ class App:
     def worker(self,jobs,fw_jobs,targets,args):
         try:
             import netmiko,openpyxl,paramiko
-            result=motor.run_collection(jobs,fw_jobs,targets,args,on_event=lambda e:self.events.put(('progress',e)))
+            result=rede.run_collection(jobs,fw_jobs,targets,args,on_event=lambda e:self.events.put(('progress',e)))
             self.events.put(('done',result))
         except Exception as exc:
             message=str(exc)
@@ -363,7 +373,7 @@ class SimpleApp(App):
         root.geometry(f'{min(780,root.winfo_screenwidth()-60)}x{min(680,root.winfo_screenheight()-100)}');root.minsize(650,560)
         root.rowconfigure(2,weight=0);root.rowconfigure(0,weight=1)
         page=ttk.Frame(root,padding=20);page.grid(row=0,column=0,sticky='nsew');page.columnconfigure(0,weight=1)
-        ttk.Label(page,text='Localizar dispositivos',font=('Segoe UI',18,'bold')).grid(row=0,column=0,sticky='w',pady=(0,12))
+        ttk.Label(page,text='Mapeamento de Rede',font=('Segoe UI',18,'bold')).grid(row=0,column=0,sticky='w',pady=(0,12))
         toolbar=ttk.Frame(page);toolbar.grid(row=1,column=0,sticky='ew',pady=(0,6))
         buttons=[]
         for label,action in [('Adicionar firewall',lambda:self.open_device('firewalls')),('Adicionar switch',lambda:self.open_device('switches')),('Editar',self.edit_device),('Remover',self.remove_devices),('Importar CSV',self.choose_import)]:
@@ -385,11 +395,12 @@ class SimpleApp(App):
         ttk.Entry(auth,textvariable=self.credentials['SW_PASSWORD'],show='•').grid(row=0,column=3,sticky='ew',padx=(8,0))
         ttk.Label(page,text='A senha fica somente nesta sessão.').grid(row=7,column=0,sticky='w',pady=(4,12))
         self.mac_window=tk.Toplevel(root);self.mac_window.title('MACs opcionais');self.mac_window.withdraw();self.mac_window.protocol('WM_DELETE_WINDOW',self.mac_window.withdraw)
-        ttk.Label(self.mac_window,text='Cole um MAC por linha. Sem FortiGate, esta lista é necessária.').pack(padx=15,pady=10)
+        ttk.Label(self.mac_window,text='Cole MACs para acrescentar ao mapeamento ou pesquisar no modo rápido.').pack(padx=15,pady=10)
         self.mac_text=tk.Text(self.mac_window,height=12,width=55);self.mac_text.pack(fill='both',expand=True,padx=15)
+        ttk.Checkbutton(self.mac_window,text='Somente localizar estes MACs (consulta rápida)',variable=self.settings['rapido']).pack(anchor='w',padx=15,pady=8)
         ttk.Button(self.mac_window,text='Pronto',command=self.mac_window.withdraw).pack(pady=10)
         actions=ttk.Frame(page);actions.grid(row=8,column=0,sticky='ew')
-        self.start_button=ttk.Button(actions,text='Localizar',command=lambda:self.safe(self.start));self.start_button.pack(side='left')
+        self.start_button=ttk.Button(actions,text='Mapear rede',command=lambda:self.safe(self.start));self.start_button.pack(side='left')
         self.excel_button=ttk.Button(actions,text='Abrir Excel',state='disabled',command=lambda:self.safe(lambda:self.open_result(False)));self.excel_button.pack(side='left',padx=8)
         ttk.Button(actions,text='MACs opcionais',command=self.mac_window.deiconify).pack(side='left',padx=4)
         ttk.Button(actions,text='Opções',command=self.options.deiconify).pack(side='right')
@@ -401,7 +412,7 @@ class SimpleApp(App):
         for i,(label,fn) in enumerate([('Abrir cadastro',self.load_project),('Salvar cadastro',self.save_project),('Detalhes da coleta',self.details.deiconify)]):
             ttk.Button(self.options,text=label,command=lambda f=fn:self.safe(f)).grid(row=6+i,column=0,columnspan=2,pady=5)
         self.fill_simple();self.refresh_credentials()
-        self.status.set('Informe os equipamentos e clique em Localizar.')
+        self.status.set('Informe os equipamentos e clique em Mapear rede.')
 
     def fill_simple(self):
         if not hasattr(self,'device_table') or not hasattr(self,'mac_text'):return

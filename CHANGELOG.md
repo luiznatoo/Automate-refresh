@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 2.2.0 — 2026-10-05
+
+- Mapeamento de Rede unifica portas e dispositivos em uma tela e um Excel.
+- Uma sessão SSH por switch e cache das consultas compartilhadas.
+- Consulta rápida de MACs, sem coleta completa ou firewall.
+- Preservação de resultados de portas quando a descoberta falha.
+
+
 ## 2.1.11 — 2026-10-04
 
 - Removidos Auditoria de Firewall e Pré/pós-RDM do catálogo, código e distribuição.

@@ -1,21 +1,28 @@
-# Localizador de dispositivos
+# Mapeamento de Rede
 
-## Uso
+Uma tela, cadastro único com hostname e IP/DNS, CSV e credenciais por sessão.
 
-1. Clique em Adicionar switch e informe hostname, IP/DNS e tipo (Juniper ou Cisco). Também é possível importar CSV.
-2. Clique em Adicionar firewall e informe hostname e IP/DNS do FortiGate para descoberta automática.
-3. Informe usuário e senha; clique em Localizar e depois Abrir Excel.
+1. Adicione switches e, opcionalmente, o FortiGate da unidade.
+2. Informe usuário e senha. Senhas diferentes e ajustes SSH ficam em Opções.
+3. Clique em Mapear rede e depois Abrir Excel.
 
-Sem FortiGate, informe a lista no botão MACs opcionais. Em Opções ficam senha diferente para firewall, grupos específicos, tempo de espera, paralelismo, known_hosts, cadastros salvos e detalhes da coleta. A senha permanece somente na sessão.
+O modo completo não exige lista de MACs nem firewall. Sem FortiGate, descobre MACs nas portas de acesso; IPs e nomes dependem de informações disponíveis. O firewall acrescenta ARP/DHCP. As informações coletadas não garantem presença atual nem conexão física direta.
 
-Uma única tela concentra a coleta. A lista mostra tipo, hostname e IP/DNS. Editar e Remover funcionam sobre os itens selecionados. Acessos específicos importados são preservados. CSVs e cadastros antigos continuam aceitos.
+## Excel
 
-## Resultado
+- Portas: todas as interfaces coletadas, acesso/trunk, link, velocidade, VLANs, agregação e LLDP.
+- Dispositivos: IP, MAC, nome disponível, switch e porta de acesso, sem repetir uplinks.
+- VLANs: redes criadas e seus dados disponíveis.
+- Pendências: falhas de consulta e localizações que precisam de revisão.
 
-O Excel contém somente Dispositivos e Pendências. Dispositivos mostra nome (quando disponível), IP, MAC, switch, porta, VLAN e resultado. Uplinks não são apresentados como localização final. Observações repetidas da mesma porta são consolidadas.
+Falhas na descoberta de dispositivos não descartam as portas coletadas. A aba de dispositivos não considera a falha em outro switch como motivo para invalidar uma localização observada. Dados técnicos ficam no JSON/log local, não como abas extensas.
 
-Uma falha em outro equipamento não invalida uma porta identificada. As falhas de consulta aparecem em Pendências; ausência de uma porta não comprova que o dispositivo está desligado. Múltiplas portas de acesso e conflitos de IP/MAC continuam A revisar. Localizado significa uma única porta de acesso observada nesta coleta, sem comprovar conexão física direta nem cobertura total da unidade.
+## Localização rápida
 
-Os registros técnicos ficam na pasta do resultado (JSON e logs) e no botão Detalhes da coleta. Não são acrescentados como abas extensas no Excel. Não é necessário fornecer um modelo Excel.
+Em MACs opcionais, informe os MACs e marque Somente localizar estes MACs. Nesse modo consulta apenas tabela MAC, configuração e LLDP dos switches, sem consultar o firewall ou coletar as demais informações de portas. O Excel contém Dispositivos e Pendências.
 
-A coleta é somente leitura. SSH mantém validação de chave do equipamento. Não são descobertos automaticamente endereços ausentes das tabelas consultadas.
+## Compatibilidade
+
+As consultas comuns de configuração e LLDP são reutilizadas em memória. Cada switch usa uma sessão SSH na execução completa. A coleta é somente leitura; mantém verificação de chave SSH e validação dos destinos.
+
+Cadastros antigos do localizador continuam disponíveis. Abrir cadastro também aceita o projeto antigo do mapeador de portas, preservando firewall e MACs atuais. CSVs de switches aceitam vírgula/ponto e vírgula e cabeçalhos nome/host/plataforma ou hostname/ip/tipo. Se a lista atual estiver vazia, inventario_portas.csv pode ser usado como cadastro inicial. Relatórios antigos ficam preservados localmente. Nenhum modelo Excel externo é necessário.

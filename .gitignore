@@ -30,3 +30,7 @@ dist/
 *.zip
 *.sha256
 # Catálogos locais acompanham suas bases privadas
+
+**/projeto_coleta.json
+**/projeto_mapeamento.json
+**/cadastro_portas_anterior.json

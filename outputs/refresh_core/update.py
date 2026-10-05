@@ -43,6 +43,8 @@ def migrate(source,destination,manifest,preserve_existing=False):
         custom=rel.as_posix() not in manifest['files'] and file.suffix.lower() in ('.json','.csv','.xlsx','.conf','.jsonl')
         if not (is_data or custom):continue
         if file.suffix.lower() in ('.py','.pyw','.exe','.dll','.pyd'):continue
+        if rel.parts[:2]==('ferramentas','switch-mapper'):
+            rel=Path('ferramentas/localizador-mac/dados/importados-portas').joinpath(*rel.parts[2:])
         target=destination/rel
         if preserve_existing and target.exists():
             digest=hashlib.sha256(target.read_bytes()).hexdigest()
@@ -50,7 +52,7 @@ def migrate(source,destination,manifest,preserve_existing=False):
             if digest!=manifest['files'].get(rel.as_posix()):target=destination/'dados/importados'/stamp/rel
         target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(file,target);copied.append(target.relative_to(destination).as_posix())
     if (source/'central.py').exists() and not (source/'ferramentas').exists() and (source.parent/'refresh_core').exists():
-        for module in ('fortigate-hardening','switch-mapper','localizador-mac','fortigate-config','fortiswitch-config'):
+        for module in ('fortigate-hardening','localizador-mac','fortigate-config','fortiswitch-config'):
             folder=source.parent/module
             if not folder.is_dir():continue
             prefix='ferramentas/'+module+'/'

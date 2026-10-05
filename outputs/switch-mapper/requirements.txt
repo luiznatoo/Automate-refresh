@@ -1,3 +1,0 @@
-netmiko>=4.4,<5
-ntc-templates>=7,<10
-openpyxl>=3.1,<4

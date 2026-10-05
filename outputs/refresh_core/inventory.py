@@ -57,7 +57,6 @@ def devices(data,unit):
 def dispatch(path,data,unit,tool):
     rows=devices(data,unit)
     if tool=='fortigate-hardening':rows=[r for r in rows if r['plataforma']=='fortinet']
-    elif tool=='switch-mapper':rows=[r for r in rows if r['plataforma']!='fortinet']
     elif tool!='localizador-mac':return None
     if not rows:raise ValueError('A unidade selecionada não tem equipamentos compatíveis com esta ferramenta')
     # Hardening uses one SSH password per execution. Never collapse different groups silently.
@@ -77,7 +76,6 @@ def preload(app,tool):
         app.inventory.set_rows(rows)
         password=os.getenv(rows[0].get('password_env',''),'')
         if password:app.values['senha'].set(password)
-    elif tool=='switch-mapper':app.inventory.set_rows(rows);app.refresh_credentials()
     else:
         app.editors['switches'].set_rows([r for r in rows if r['plataforma']!='fortinet'])
         app.editors['firewalls'].set_rows([r for r in rows if r['plataforma']=='fortinet'])

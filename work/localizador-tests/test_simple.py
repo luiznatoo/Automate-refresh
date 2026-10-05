@@ -49,7 +49,7 @@ class SimpleScreenTests(unittest.TestCase):
   with patch.object(ui.App,'load_initial'),patch('refresh_core.inventory.preload'):
    app=ui.SimpleApp(root)
   try:
-   self.assertFalse(app.tabs.winfo_ismapped());self.assertEqual(app.start_button.cget('text'),'Localizar')
+   self.assertFalse(app.tabs.winfo_ismapped());self.assertEqual(app.start_button.cget('text'),'Mapear rede')
    app.save_device('switches',{'nome':'SW01','host':'192.0.2.10','plataforma':'juniper_junos'})
    app.save_device('switches',{'nome':'SW02','host':'192.0.2.11','plataforma':'juniper_junos'})
    app.save_device('firewalls',{'nome':'FW01','host':'192.0.2.1'})
@@ -62,6 +62,9 @@ class SimpleScreenTests(unittest.TestCase):
    app.apply_project(data);self.assertEqual(app.project()['switches'][0]['porta'],'2222')
    app.save_device('switches',{**app.editors['switches'].rows()[0],'nome':'RENAMED'},0)
    self.assertEqual(app.project()['switches'][0]['nome'],'RENAMED');self.assertEqual(app.project()['switches'][0]['porta'],'2222')
+   legacy={'schema':1,'tipo':'mapeamento-switches','settings':{'usuario':'operator'},'switches':app.project()['switches']}
+   app.apply_project(legacy);self.assertEqual(app.project()['firewalls'][0]['nome'],'FW01')
+   self.assertEqual(app.credentials['SW_PASSWORD'].get(),'session-test')
    app.device_table.selection_set('firewalls:0');app.remove_devices()
    app.mac_text.insert('1.0','aa:bb:cc:dd:ee:ff');data=app.project()
    self.assertEqual(data['settings']['modo'],'lista');self.assertEqual(data['macs'][0]['mac'],'aabbccddeeff')

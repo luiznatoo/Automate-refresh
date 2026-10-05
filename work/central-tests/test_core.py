@@ -33,10 +33,10 @@ class CoreTests(unittest.TestCase):
             with self.assertRaises(ValueError):inventory.validate(data)
 
     def test_dispatch_filters_and_removed_tools(self):
-        for tool,expected in [('fortigate-hardening',1),('switch-mapper',1),('localizador-mac',2)]:
+        for tool,expected in [('fortigate-hardening',1),('localizador-mac',2)]:
             path=inventory.dispatch(self.folder/(tool+'.json'),self.data,'SP',tool)
             self.assertEqual(len(json.loads(path.read_text())['devices']),expected)
-        for tool in ('fortigate-auditoria','fortigate-rdm'):
+        for tool in ('fortigate-auditoria','fortigate-rdm','switch-mapper'):
             self.assertIsNone(inventory.dispatch(self.folder/'removed.json',self.data,'SP',tool))
 
     def test_mixed_password_groups_not_silently_merged(self):

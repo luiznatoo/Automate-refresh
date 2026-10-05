@@ -23,8 +23,7 @@ from refresh_core.update import install,migrate
 BASE=Path(__file__).resolve().parent
 TOOLS=[
     ('fortigate-hardening','Hardening FortiGate','Controles de segurança, recomendações e correções mediante aprovação.','interface.py',False,'resultados'),
-    ('switch-mapper','Mapeamento de portas','Interfaces, VLANs, trunks, agregações, LLDP e Excel.','interface.py',False,'relatorios'),
-    ('localizador-mac','Localização de dispositivos','FortiGate + switches: IP, MAC e porta de acesso.','interface.py',False,'resultados'),
+    ('localizador-mac','Mapeamento de Rede','Portas, VLANs e dispositivos em uma coleta.','interface.py',False,'resultados'),
     ('fortigate-config','Gerador FortiGate','Bases 60F 7.4.9 e 40F 7.4.12, com prévia das alterações.','gerar.py',False,''),
     ('fortiswitch-config','Gerador FortiSwitch','Configuração standalone com a base 148E cadastrada.','gerar.py',False,''),
 ]
@@ -84,11 +83,10 @@ class App:
         def wheel(event):canvas.yview_scroll(-1 if event.delta>0 else 1,'units')
         canvas.bind('<MouseWheel>',wheel)
         descriptions={'fortigate-hardening':'Verificar e corrigir os controles do seu script de segurança.',
-          'switch-mapper':'Ver portas, VLANs e conexões dos switches.',
-          'localizador-mac':'Encontrar o switch e a porta de um dispositivo.',
+          'localizador-mac':'Mapear portas, VLANs e localizar dispositivos.',
           'fortigate-config':'Preparar configurações de firewall.',
           'fortiswitch-config':'Preparar configurações de switch.'}
-        sections=[('Verificar a rede',TOOLS[:3]),('Gerar configurações',TOOLS[3:])]
+        sections=[('Verificar a rede',TOOLS[:2]),('Gerar configurações',TOOLS[2:])]
         row=0
         for title,tools in sections:
             ttk.Label(body,text=title,font=('Segoe UI',11,'bold')).grid(row=row,column=0,sticky='w',pady=(10,5));row+=1

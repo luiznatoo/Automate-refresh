@@ -19,11 +19,11 @@ Abra CentralRefresh.exe no pacote Windows mantendo todas as pastas ao lado. Para
 
 Cadastre primeiro as unidades e os grupos de credenciais, depois os equipamentos. O grupo guarda usuário, nome da variável de senha, variável enable opcional e caminho absoluto de chave SSH opcional. Não digite senhas nesses campos. O CSV de equipamentos usa unidade;nome;host;porta;plataforma;grupo. Plataformas: fortinet, juniper_junos, cisco_ios e cisco_nxos. Uma importação inválida não substitui o cadastro anterior.
 
-Selecione a unidade e opcionalmente um grupo na tela principal. Cadastro local mantém os cadastros próprios dos módulos. Ao abrir um coletor, o inventário selecionado é preenchido sem iniciar conexões. Hardening recebe FortiGates, mapeamento recebe switches e localizador recebe ambos. Geradores continuam utilizando seus projetos específicos.
+Selecione a unidade e opcionalmente um grupo na tela principal. Cadastro local mantém os cadastros próprios dos módulos. Ao abrir um coletor, o inventário selecionado é preenchido sem iniciar conexões. Hardening recebe FortiGates, Mapeamento de Rede recebe firewalls e switches. Geradores continuam utilizando seus projetos específicos.
 
 Senhas da sessão permite informar senha SSH e enable por grupo. Nada é salvo no cadastro ou despachos; senhas são repassadas por variáveis de ambiente aos processos filhos. Fechar a Central limpa sua cópia; ferramentas já abertas mantêm sua própria sessão. Se não fornecer na Central, preencha no módulo. Enable exige uma referência de variável definida no grupo.
 
-Hardening utiliza uma senha por lote na interface: selecione um grupo quando houver senhas diferentes na unidade. A interface desse módulo não recebe chave SSH. Switch mapper e localizador aceitam grupos distintos por equipamento. As chaves conhecidas SSH continuam obrigatórias; nenhuma chave de host desconhecida é aceita automaticamente.
+Hardening utiliza uma senha por lote na interface: selecione um grupo quando houver senhas diferentes na unidade. A interface desse módulo não recebe chave SSH. Mapeamento de Rede aceita grupos distintos por equipamento. As chaves conhecidas SSH continuam obrigatórias; nenhuma chave de host desconhecida é aceita automaticamente.
 
 ## Transporte e histórico
 

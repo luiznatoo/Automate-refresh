@@ -243,7 +243,7 @@ def ssh_diagnostic(exc, credentials):
     return f'{type(exc).__name__}: {hint} Detalhe: {message or "sem detalhe adicional"}'
 
 
-def collect(device, credentials, timeout, known_hosts):
+def collect(device, credentials, timeout, known_hosts, connection=None):
     from refresh_core.ssh import connect_switch as ConnectHandler
     from netmiko.utilities import get_structured_data_textfsm
     tables, errors = {}, []
@@ -263,7 +263,8 @@ def collect(device, credentials, timeout, known_hosts):
         parameters.update(use_keys=True, key_file=device["key_file"])
     config_ok = False
     try:
-        with ConnectHandler(**parameters) as conn:
+        from contextlib import nullcontext
+        with (nullcontext(connection) if connection is not None else ConnectHandler(**parameters)) as conn:
             if device["plataforma"].startswith("cisco") and credentials["secret"]:
                 conn.enable()
             command = ("show configuration | display inheritance | display set | no-more"
@@ -459,7 +460,7 @@ def run_mapping(jobs, args, on_event=None):
         rows.sort(key=lambda r: (r.get("equipamento", ""), r.get("interface", "")))
     target = Path(args.saida) if args.saida else Path(__file__).parent / 'relatorios' / f"mapeamento_{datetime.now():%Y%m%d_%H%M%S_%f}.xlsx"
     if args.modelo:
-        from modelo_excel import export_model
+        from portas_excel import export_model
         export_model(result, args.modelo, target)
     else:
         export_excel(result, target)
@@ -485,7 +486,7 @@ def main():
     if not check_dependencies():
         return 1
     if args.modelo:
-        from modelo_excel import load_model
+        from portas_excel import load_model
         try:
             load_model(args.modelo).close()
         except (OSError, ValueError) as exc:
