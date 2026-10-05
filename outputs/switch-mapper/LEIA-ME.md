@@ -1,3 +1,21 @@
+# Mapeamento de portas — tela simplificada
+
+1. Clique em Adicionar switch: hostname, IP/DNS e tipo (Juniper, Cisco IOS ou Cisco Nexus).
+2. Para vários switches, use Importar CSV. A importação acrescenta os novos equipamentos e ignora registros idênticos; conflitos são informados sem alterar a lista.
+3. Informe usuário e senha abaixo da lista. Clique em Mapear portas e depois Abrir Excel.
+
+Use Editar ou Remover para os equipamentos selecionados. Hostname vazio usa o IP. A senha fica somente na sessão e não é salva com o cadastro.
+
+CSV aceita vírgula ou ponto e vírgula. Cabeçalhos: `hostname,ip,tipo` ou `nome,host,plataforma`. Tipos: `juniper_junos`, `cisco_ios`, `cisco_nxos` (também aceita Juniper, Cisco IOS e Cisco Nexus).
+
+Em Opções ficam timeout, paralelismo, known_hosts, diagnóstico, grupos de senha adicionais, abrir/salvar cadastro e detalhes da coleta. No cadastro, Acesso específico permite alterar porta, usuário, grupo de senha, enable ou chave SSH quando necessário.
+
+A coleta e o modelo Excel permanecem completos: portas de acesso e trunk, VLANs, agregações e LLDP. Nenhuma configuração é aplicada nos switches.
+
+---
+
+## Referência técnica anterior
+
 # Mapeamento de switches por SSH → Excel
 
 ## Interface gráfica

@@ -388,9 +388,13 @@ def check_dependencies():
 
 def read_inventory(path):
     with open(path, encoding='utf-8-sig', newline='') as handle:
-        reader = csv.DictReader(handle)
+        first = handle.readline(); handle.seek(0)
+        reader = csv.DictReader(handle, delimiter=';' if ';' in first else ',')
+        aliases={'hostname':'nome','ip':'host','tipo':'plataforma'}
+        reader.fieldnames=[aliases.get(k.strip().lower(),k.strip().lower()) for k in (reader.fieldnames or [])]
+        if len(set(reader.fieldnames))!=len(reader.fieldnames):raise ValueError('Colunas repetidas no CSV')
         if not {'nome', 'host', 'plataforma'} <= set(reader.fieldnames or []):
-            raise ValueError('Inventário precisa das colunas nome,host,plataforma, separadas por vírgulas')
+            raise ValueError('Inventário precisa das colunas nome,host,plataforma, separadas por vírgula ou ponto e vírgula')
         devices = []
         names, endpoints = set(), set()
         for number, row in enumerate(reader, 2):
@@ -399,6 +403,8 @@ def read_inventory(path):
             d = {k: (v or '').strip() for k, v in row.items()}
             if not any(d.values()):
                 continue
+            d['nome']=d['nome'] or d['host']
+            d['plataforma']={'juniper':'juniper_junos','cisco ios':'cisco_ios','cisco nexus':'cisco_nxos'}.get(d['plataforma'].lower(),d['plataforma'].lower())
             if not d['nome'] or not d['host'] or d['plataforma'] not in PLATFORMS:
                 raise ValueError(f'Linha {number}: nome/host vazio ou plataforma inválida')
             port = d.get('porta') or '22'

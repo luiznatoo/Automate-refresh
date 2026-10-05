@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 2.1.10 — 2026-10-04
+
+- Mapeamento em tela única com hostname, IP, tipo e SSH.
+- Cadastro manual e CSV, edição e remoção, opções avançadas recolhidas.
+- CSV aceita ponto e vírgula, hostname/ip/tipo e nomes amigáveis de plataformas.
+- Cinco testes da interface e importação.
+
+
 ## 2.1.9 — 2026-10-04
 
 - Cadastro de firewall e switch com hostname e IP/DNS, no formato do hardening.

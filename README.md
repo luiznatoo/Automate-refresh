@@ -2,7 +2,7 @@
 
 Ferramentas desktop em Python para auditoria e hardening FortiGate, mapeamento de switches, localização de dispositivos, comparação pré/pós-RDM e geração de configurações.
 
-Versão atual: **2.1.9**. Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
+Versão atual: **2.1.10**. Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
 
 ## Executar no Windows
 
@@ -34,6 +34,7 @@ Cadastre equipamentos na interface ou importe CSV local. Esses arquivos são ign
 python -m unittest discover -s work/hardening-script-tests -v
 python -m unittest discover -s work/central-tests -v
 python -m unittest discover -s work/localizador-tests -v
+python -m unittest discover -s work/switch-ui-tests -v
 ```
 
 As suítes incluídas exercitam o núcleo e o escopo atual do hardening; não representam cobertura completa de todos os módulos nem homologação em hardware.
