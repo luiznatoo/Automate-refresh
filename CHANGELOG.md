@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 2.2.1 — 2026-10-05
+
+- LLDP consolidado por vizinho/porta, incluindo ID numérico com descrição de interface.
+- Restauradas colunas PoE, mídia, STP, erros RX/TX e observações no Excel.
+- Aba Resultados abre ao concluir, com prévias de portas e dispositivos.
+
+
 ## 2.2.0 — 2026-10-05
 
 - Mapeamento de Rede unifica portas e dispositivos em uma tela e um Excel.

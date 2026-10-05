@@ -44,4 +44,31 @@ class IntegrationTests(unittest.TestCase):
  def test_firewall_failure_preserves_switch_data(self):
   result,c=self.run_case(fw=True)
   self.assertTrue(result['portas']['Interfaces_config']);self.assertEqual(len(result['tables']['Localização']),1);self.assertEqual(result['code'],2)
+class OutputRegressionTests(unittest.TestCase):
+ def test_lldp_numeric_id_and_interface_consolidated(self):
+  from portas_excel import lldp_lines
+  rows=[{'neighbor_name':'SW02','neighbor_interface':'ge-0/0/3.0','chassis_id':'00:10:db:ff:20:00'},
+        {'neighbor_name':'SW02','neighbor_interface':'529','port_description':'ge-0/0/3.0','chassis_id':'00:10:db:ff:20:00'}]
+  self.assertEqual(lldp_lines(rows),['SW02 | ge-0/0/3.0 | 00:10:db:ff:20:00'])
+  rows.append({**rows[0],'neighbor_interface':'ge-0/0/4.0'})
+  self.assertEqual(len(lldp_lines(rows)),2)
+ def test_restored_excel_columns(self):
+  folder=Path('work/localizador-tests/artifacts')/uuid.uuid4().hex;folder.mkdir(parents=True)
+  ports={'Interfaces_config':[{'equipamento':'SW','interface':'ge-0/0/1','modo_configurado':'access'}],
+         'PoE':[{'equipamento':'SW','interface':'ge-0/0/1','status':'ON'}],
+         'Detalhes_portas':[{'equipamento':'SW','interface':'ge-0/0/1','media_type':'Copper','input_errors':'0','output_errors':'2'}]}
+  path=folder/'test.xlsx';rede.export({'Localização':[],'Ocorrências':[]},ports,path,False)
+  book=load_workbook(path);sheet=book['Portas'];headers=[c.value for c in sheet[1]]
+  self.assertEqual(sheet.cell(2,headers.index('PoE')+1).value,'ON');self.assertEqual(sheet.cell(2,headers.index('Mídia / transceptor')+1).value,'Copper')
+  self.assertIn('STP estado',headers);self.assertIn('Erros RX / TX',headers);book.close()
+ def test_results_tab_opens_and_replaces(self):
+  import interface as ui
+  root=ui.tk.Tk();root.withdraw()
+  with patch.object(ui.App,'load_initial'),patch('refresh_core.inventory.preload'):app=ui.App(root)
+  try:
+   self.assertEqual(len(app.workspace.tabs()),1)
+   result={'path':'test.xlsx','tables':{'Localização':[],'Ocorrências':[],'A revisar':[]},'portas':{'Resumo':[]},'code':0}
+   app.show_result(result);self.assertEqual(len(app.workspace.tabs()),2);self.assertEqual(app.workspace.select(),str(app.result_page))
+   self.assertIn('Portas',app.preview_tables);app.show_result(result);self.assertEqual(len(app.workspace.tabs()),2)
+  finally:app.close()
 if __name__=='__main__':unittest.main()

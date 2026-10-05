@@ -2,7 +2,7 @@
 
 Ferramentas desktop em Python para hardening FortiGate, mapeamento unificado de rede, geração de configurações.
 
-Versão atual: **2.2.0**. Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
+Versão atual: **2.2.1**. Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
 
 ## Executar no Windows
 

@@ -24,6 +24,36 @@ def first(row, *keys):
     return ''
 
 
+def lldp_lines(records):
+    """Consolidate summary/XML/detail observations without merging distinct ports."""
+    grouped=[]
+    for row in records:
+        neighbor=first(row,'neighbor_name','neighbor','destination_host','system_name')
+        remote=first(row,'neighbor_interface','remote_port','port_id')
+        description=first(row,'port_description','neighbor_port_description')
+        chassis=first(row,'chassis_id','neighbor_id')
+        # Junos may advertise a numeric port ID while the description is the interface.
+        if (not remote or remote.isdigit()) and re.match(r'(?i)^(?:ge-|xe-|et-|fe-|ae|gi|te|fa|eth|po)\d',description):remote=description
+        canonical=interface_id(remote).removesuffix('.0')
+        identity=re.sub(r'[:.\-]','',chassis.lower())
+        match=next((x for x in grouped if x['port']==canonical and
+                    ((identity and x['identity']==identity) or (not identity or not x['identity']) and neighbor and x['neighbor'].casefold()==neighbor.casefold())),None)
+        if match is None:
+            match={'port':canonical,'identity':identity,'neighbor':neighbor,'remote':remote,'description':description,'chassis':chassis};grouped.append(match)
+        else:
+            for key,value in [('neighbor',neighbor),('remote',remote),('description',description),('chassis',chassis),('identity',identity)]:
+                if not match[key]:match[key]=value
+    lines=[]
+    for item in grouped:
+        values=[]
+        for key in ('neighbor','remote','description','chassis'):
+            value=item[key]
+            if value and value.casefold() not in {v.casefold() for v in values}:values.append(value)
+        line=' | '.join(values)
+        if line and line not in lines:lines.append(line)
+    return lines
+
+
 def build_rows(tables):
     ports = {}
     def get(device, name):
@@ -85,16 +115,10 @@ def build_rows(tables):
                 port = get(row['equipamento'], name)
                 neighbor = first(row, 'neighbor_name', 'neighbor', 'destination_host', 'system_name')
                 remote = first(row, 'neighbor_interface', 'remote_port', 'port_id')
-                if neighbor or remote:
+                if sheet=='Vizinhos_CDP' and (neighbor or remote):
                     port['obs'] = '; '.join(filter(None, [port.get('obs'), f'{neighbor} {remote}'.strip()]))
                 if sheet == 'Vizinhos_LLDP':
-                    info = ' | '.join(filter(None, [neighbor, remote,
-                        first(row, 'port_description', 'neighbor_port_description'),
-                        first(row, 'chassis_id', 'neighbor_id')]))
-                    if info:
-                        port.setdefault('lldp', [])
-                        if info not in port['lldp']:
-                            port['lldp'].append(info)
+                    port.setdefault('lldp_records', []).append(row)
     for sheet in ('LAG_operacional', 'LACP_detalhes'):
         for row in tables.get(sheet, []):
             name = first(row, 'interface')
@@ -141,7 +165,7 @@ def build_rows(tables):
                      port.get('stp_role', 'Não coletado'), port.get('stp_state', 'Não coletado'),
                      port.get('poe', 'Não coletado'), port.get('midia', 'Não coletado'),
                      f"{port.get('rx', '?')} / {port.get('tx', '?')}", obs.strip('; '),
-                     '\n'.join(port.get('lldp', [])) or 'Não informado nesta coleta'])
+                     '\n'.join(lldp_lines(port.get('lldp_records', []))) or 'Não informado nesta coleta'])
     return rows, lacp
 
 

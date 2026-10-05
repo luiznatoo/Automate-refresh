@@ -65,8 +65,8 @@ def export(tables,ports,path,quick):
     book=prepare_template(tables)
     if not quick:
         rows,_=build_rows(ports)
-        indexes=list(range(14))+[20]
-        add_sheet(book,'Portas',['Switch','Porta','Descrição','Link','Admin','Velocidade','Duplex','Modo','VLAN acesso','VLANs trunk','VLAN nativa','Agregação','LACP papel','LACP estado','LLDP'],[[r[i] for i in indexes] for r in rows],[25,18,35,20,18,20,16,16,18,30,18,20,18,20,50])
+        indexes=list(range(21))
+        add_sheet(book,'Portas',['Switch','Porta','Descrição','Link','Admin','Velocidade','Duplex','Modo','VLAN acesso','VLANs trunk','VLAN nativa','Agregação','LACP papel','LACP estado','STP papel','STP estado','PoE','Mídia / transceptor','Erros RX / TX','Observações','LLDP'],[[r[i] for i in indexes] for r in rows],[25,18,35,20,18,20,16,16,18,30,18,20,18,20,22,22,20,28,20,45,65])
         add_sheet(book,'VLANs',['Switch','VLAN ID','Nome','Instância','Descrição','Estado','Interfaces','Interface L3'],[r[:8] for r in vlan_rows(ports)],[25,15,28,25,35,18,45,25])
         pending=book['Pendências'];names=sorted({r['equipamento'] for r in ports.get('Ocorrencias',[])})
         for name in names:

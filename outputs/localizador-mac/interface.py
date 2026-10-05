@@ -372,7 +372,9 @@ class SimpleApp(App):
             if not isinstance(widget,tk.Toplevel):widget.grid_remove()
         root.geometry(f'{min(780,root.winfo_screenwidth()-60)}x{min(680,root.winfo_screenheight()-100)}');root.minsize(650,560)
         root.rowconfigure(2,weight=0);root.rowconfigure(0,weight=1)
-        page=ttk.Frame(root,padding=20);page.grid(row=0,column=0,sticky='nsew');page.columnconfigure(0,weight=1)
+        self.workspace=ttk.Notebook(root);self.workspace.grid(row=0,column=0,sticky='nsew')
+        page=ttk.Frame(self.workspace,padding=20);self.workspace.add(page,text='Equipamentos');page.columnconfigure(0,weight=1)
+        self.result_page=None
         ttk.Label(page,text='Mapeamento de Rede',font=('Segoe UI',18,'bold')).grid(row=0,column=0,sticky='w',pady=(0,12))
         toolbar=ttk.Frame(page);toolbar.grid(row=1,column=0,sticky='ew',pady=(0,6))
         buttons=[]
@@ -413,6 +415,34 @@ class SimpleApp(App):
             ttk.Button(self.options,text=label,command=lambda f=fn:self.safe(f)).grid(row=6+i,column=0,columnspan=2,pady=5)
         self.fill_simple();self.refresh_credentials()
         self.status.set('Informe os equipamentos e clique em Mapear rede.')
+
+    def show_result(self,result):
+        super().show_result(result)
+        if self.result_page is not None:
+            self.workspace.forget(self.result_page);self.result_page.destroy()
+        self.result_page=ttk.Frame(self.workspace,padding=12);self.workspace.add(self.result_page,text='Resultados')
+        ttk.Label(self.result_page,textvariable=self.summary,wraplength=720).pack(anchor='w',pady=5)
+        bar=ttk.Frame(self.result_page);bar.pack(fill='x',pady=6)
+        ttk.Button(bar,text='Abrir Excel',command=lambda:self.safe(lambda:self.open_result(False))).pack(side='left')
+        ttk.Button(bar,text='Detalhes da coleta',command=self.details.deiconify).pack(side='left',padx=8)
+        previews=ttk.Notebook(self.result_page);previews.pack(fill='both',expand=True)
+        def table(title,headers,rows):
+            frame=ttk.Frame(previews);previews.add(frame,text=title);frame.columnconfigure(0,weight=1);frame.rowconfigure(0,weight=1)
+            view=ttk.Treeview(frame,columns=list(range(len(headers))),show='headings',height=12)
+            for i,label in enumerate(headers):view.heading(i,text=label);view.column(i,width=160,minwidth=90)
+            for row in rows[:500]:view.insert('','end',values=row)
+            view.grid(row=0,column=0,sticky='nsew')
+            sy=ttk.Scrollbar(frame,orient='vertical',command=view.yview);sy.grid(row=0,column=1,sticky='ns')
+            sx=ttk.Scrollbar(frame,orient='horizontal',command=view.xview);sx.grid(row=1,column=0,sticky='ew');view.configure(yscrollcommand=sy.set,xscrollcommand=sx.set)
+            return view
+        self.preview_tables={}
+        if result.get('portas'):
+            from portas_excel import build_rows
+            ports,_=build_rows(result['portas'])
+            self.preview_tables['Portas']=table('Portas',['Switch','Porta','Descrição','Link','Modo','PoE','Mídia','LLDP'],[[r[i] for i in (0,1,2,3,7,16,17,20)] for r in ports])
+        devices=motor.useful_rows(result['tables']);headers=['Dispositivo','IP','MAC','Switch','Porta','VLAN','Resultado']
+        self.preview_tables['Dispositivos']=table('Dispositivos',headers,[[r[k] for k in headers] for r in devices])
+        self.workspace.select(self.result_page)
 
     def fill_simple(self):
         if not hasattr(self,'device_table') or not hasattr(self,'mac_text'):return
@@ -491,6 +521,10 @@ class SimpleApp(App):
         # Sync visible inputs before collecting credentials for newly imported groups.
         self.project()
         super().start()
+        if self.running:
+            if self.result_page is not None:
+                self.workspace.forget(self.result_page);self.result_page.destroy();self.result_page=None
+            self.workspace.select(0)
 
 
 App=SimpleApp
