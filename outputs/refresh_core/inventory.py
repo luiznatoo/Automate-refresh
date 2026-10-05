@@ -56,20 +56,15 @@ def devices(data,unit):
 
 def dispatch(path,data,unit,tool):
     rows=devices(data,unit)
-    if tool in ('fortigate-hardening','fortigate-auditoria','fortigate-rdm'):rows=[r for r in rows if r['plataforma']=='fortinet']
+    if tool=='fortigate-hardening':rows=[r for r in rows if r['plataforma']=='fortinet']
     elif tool=='switch-mapper':rows=[r for r in rows if r['plataforma']!='fortinet']
     elif tool!='localizador-mac':return None
     if not rows:raise ValueError('A unidade selecionada não tem equipamentos compatíveis com esta ferramenta')
-    # Audit/hardening presently share one SSH password per execution. Never collapse different groups silently.
-    if tool in ('fortigate-hardening','fortigate-auditoria'):
+    # Hardening uses one SSH password per execution. Never collapse different groups silently.
+    if tool=='fortigate-hardening':
         if len({r['password_env'] for r in rows})>1:raise ValueError('Esta ferramenta usa uma senha por lote. Separe a unidade por grupo de senha para este lançamento')
-        if any(r['key_file'] for r in rows):raise ValueError('Auditoria/hardening usam senha nesta interface. Selecione um grupo sem chave SSH')
+        if any(r['key_file'] for r in rows):raise ValueError('Hardening usa senha nesta interface. Selecione um grupo sem chave SSH')
     write_json(path,{'tool':tool,'unit':unit,'devices':rows})
-    if tool=='fortigate-rdm':
-        path=Path(path).with_suffix('.csv')
-        with path.open('w',encoding='utf-8-sig',newline='') as f:
-            w=csv.DictWriter(f,fieldnames=['nome','host','porta','usuario','password_env','key_file'],delimiter=';');w.writeheader()
-            w.writerows({k:r.get(k,'') for k in w.fieldnames} for r in rows)
     return Path(path)
 
 def preload(app,tool):
@@ -78,7 +73,7 @@ def preload(app,tool):
     data=json.loads(Path(path).read_text(encoding='utf-8'))
     if data['tool']!=tool:raise ValueError('Inventário destinado a outra ferramenta')
     rows=data['devices']
-    if tool in ('fortigate-hardening','fortigate-auditoria'):
+    if tool=='fortigate-hardening':
         app.inventory.set_rows(rows)
         password=os.getenv(rows[0].get('password_env',''),'')
         if password:app.values['senha'].set(password)

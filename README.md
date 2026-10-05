@@ -1,8 +1,8 @@
 # Central Refresh
 
-Ferramentas desktop em Python para auditoria e hardening FortiGate, mapeamento de switches, localização de dispositivos, comparação pré/pós-RDM e geração de configurações.
+Ferramentas desktop em Python para hardening FortiGate, mapeamento de switches, localização de dispositivos, geração de configurações.
 
-Versão atual: **2.1.10**. Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
+Versão atual: **2.1.11**. Versão inicial do histórico Git: **2.1.6**. O histórico anterior não está disponível como commits.
 
 ## Executar no Windows
 
@@ -24,7 +24,6 @@ Para utilizar as ferramentas que dependem deles, copie de sua instalação confi
 - FortiSwitch: pasta `bases` completa para `outputs/fortiswitch-config/bases`.
 - Mapeamento: `modelo_fixo.xlsx` para `outputs/switch-mapper`.
 - Localizador: não precisa de modelo Excel externo.
-- RDM: `modelo_comparativo.xlsx` para `outputs/fortigate-rdm`.
 
 Cadastre equipamentos na interface ou importe CSV local. Esses arquivos são ignorados pelo Git. Os geradores requerem as bases locais para abrir. Não publique os ZIPs antigos: eles incluem bases privadas. As instruções dos módulos que mencionam bases incorporadas referem-se à instalação local completa.
 

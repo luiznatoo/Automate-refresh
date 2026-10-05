@@ -22,11 +22,9 @@ from refresh_core.update import install,migrate
 
 BASE=Path(__file__).resolve().parent
 TOOLS=[
-    ('fortigate-auditoria','Auditoria de Firewall','Somente leitura: versão, modelo, HA, BGP, VPNs e relatório Excel.','interface.py',False,'resultados'),
     ('fortigate-hardening','Hardening FortiGate','Controles de segurança, recomendações e correções mediante aprovação.','interface.py',False,'resultados'),
     ('switch-mapper','Mapeamento de portas','Interfaces, VLANs, trunks, agregações, LLDP e Excel.','interface.py',False,'relatorios'),
     ('localizador-mac','Localização de dispositivos','FortiGate + switches: IP, MAC e porta de acesso.','interface.py',False,'resultados'),
-    ('fortigate-rdm','Pré e pós-RDM','Coleta e comparação de BGP, VPN, ARP, DHCP e HA. Assistente no terminal.','fortigate_rdm.py',True,'coletas'),
     ('fortigate-config','Gerador FortiGate','Bases 60F 7.4.9 e 40F 7.4.12, com prévia das alterações.','gerar.py',False,''),
     ('fortiswitch-config','Gerador FortiSwitch','Configuração standalone com a base 148E cadastrada.','gerar.py',False,''),
 ]
@@ -43,7 +41,7 @@ def launch_command(tool):
     folder=tool_folder(identifier); target=folder/script
     if not target.is_file(): raise FileNotFoundError('Ferramenta não encontrada: '+str(target))
     if getattr(sys,'frozen',False):
-        executable=Path(sys.executable).parent/('AssistenteRDM.exe' if console else 'CentralRefresh.exe')
+        executable=Path(sys.executable).parent/'CentralRefresh.exe'
         if not executable.is_file(): raise FileNotFoundError('Executável não encontrado: '+str(executable))
         return [str(executable),'--tool',identifier],folder
     executable=Path(sys.executable)
@@ -85,14 +83,12 @@ class App:
         canvas.bind('<Configure>',lambda e:canvas.itemconfigure(window,width=e.width))
         def wheel(event):canvas.yview_scroll(-1 if event.delta>0 else 1,'units')
         canvas.bind('<MouseWheel>',wheel)
-        descriptions={'fortigate-auditoria':'Verificar o funcionamento dos firewalls.',
-          'fortigate-hardening':'Verificar e corrigir os controles do seu script de segurança.',
+        descriptions={'fortigate-hardening':'Verificar e corrigir os controles do seu script de segurança.',
           'switch-mapper':'Ver portas, VLANs e conexões dos switches.',
           'localizador-mac':'Encontrar o switch e a porta de um dispositivo.',
-          'fortigate-rdm':'Comparar a rede antes e depois da mudança. Abre no terminal.',
           'fortigate-config':'Preparar configurações de firewall.',
           'fortiswitch-config':'Preparar configurações de switch.'}
-        sections=[('Verificar a rede',TOOLS[:4]),('Comparar uma mudança',[TOOLS[4]]),('Gerar configurações',TOOLS[5:])]
+        sections=[('Verificar a rede',TOOLS[:3]),('Gerar configurações',TOOLS[3:])]
         row=0
         for title,tools in sections:
             ttk.Label(body,text=title,font=('Segoe UI',11,'bold')).grid(row=row,column=0,sticky='w',pady=(10,5));row+=1

@@ -8,5 +8,4 @@ for package in ('netmiko','ntc_templates','paramiko','openpyxl','textfsm'):
 a=Analysis([str(root/'entrada.py')],pathex=[],binaries=[],datas=data,hiddenimports=[],hookspath=[],hooksconfig={},runtime_hooks=[],excludes=[],noarchive=False)
 pyz=PYZ(a.pure)
 gui=EXE(pyz,a.scripts,[],exclude_binaries=True,name='CentralRefresh',debug=False,bootloader_ignore_signals=False,strip=False,upx=False,console=False)
-terminal=EXE(pyz,a.scripts,[],exclude_binaries=True,name='AssistenteRDM',debug=False,bootloader_ignore_signals=False,strip=False,upx=False,console=True)
-coll=COLLECT(gui,terminal,a.binaries,a.datas,strip=False,upx=False,name='CentralRefresh')
+coll=COLLECT(gui,a.binaries,a.datas,strip=False,upx=False,name='CentralRefresh')

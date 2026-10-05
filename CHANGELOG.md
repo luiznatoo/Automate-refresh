@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 2.1.11 — 2026-10-04
+
+- Removidos Auditoria de Firewall e Pré/pós-RDM do catálogo, código e distribuição.
+- Central mantém cinco ferramentas; migração não recria os módulos removidos.
+
+
 ## 2.1.10 — 2026-10-04
 
 - Mapeamento em tela única com hostname, IP, tipo e SSH.

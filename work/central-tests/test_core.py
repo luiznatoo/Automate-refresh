@@ -32,12 +32,12 @@ class CoreTests(unittest.TestCase):
             data=copy.deepcopy(self.data);mutation(data)
             with self.assertRaises(ValueError):inventory.validate(data)
 
-    def test_dispatch_filters_and_rdm_csv(self):
-        for tool,expected in [('fortigate-hardening',1),('fortigate-auditoria',1),('switch-mapper',1),('localizador-mac',2)]:
+    def test_dispatch_filters_and_removed_tools(self):
+        for tool,expected in [('fortigate-hardening',1),('switch-mapper',1),('localizador-mac',2)]:
             path=inventory.dispatch(self.folder/(tool+'.json'),self.data,'SP',tool)
             self.assertEqual(len(json.loads(path.read_text())['devices']),expected)
-        path=inventory.dispatch(self.folder/'rdm.json',self.data,'SP','fortigate-rdm')
-        self.assertEqual(path.suffix,'.csv');self.assertNotIn('192.0.2.2',path.read_text(encoding='utf-8-sig'))
+        for tool in ('fortigate-auditoria','fortigate-rdm'):
+            self.assertIsNone(inventory.dispatch(self.folder/'removed.json',self.data,'SP',tool))
 
     def test_mixed_password_groups_not_silently_merged(self):
         data=copy.deepcopy(self.data);data['groups'].append({**data['groups'][0],'nome':'Outro','password_env':'OTHER'})

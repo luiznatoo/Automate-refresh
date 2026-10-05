@@ -9,7 +9,7 @@ class Tests(unittest.TestCase):
         root=c.tk.Tk();root.withdraw();app=c.App(root)
         try:
             self.assertEqual(app.options.state(),'withdrawn')
-            self.assertEqual(len(app.buttons),7)
+            self.assertEqual(len(app.buttons),5)
             self.assertTrue(all(b.cget('text')=='Abrir' for b in app.buttons.values()))
             self.assertTrue(all(not v.get() for v in app.messages.values()))
             app.unit.set('UNIDADE TESTE');app.group.set('GRUPO TESTE')
@@ -21,7 +21,7 @@ class Tests(unittest.TestCase):
         finally:app.close()
 
     def test_catalog_launch_paths(self):
-        self.assertEqual(len(c.TOOLS),7)
+        self.assertEqual(len(c.TOOLS),5)
         for tool in c.TOOLS:
             command,folder=c.launch_command(tool)
             self.assertTrue(Path(command[1]).is_file()); self.assertTrue((folder/'LEIA-ME.md').is_file())

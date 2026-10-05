@@ -5,7 +5,7 @@ import runpy
 import sys
 import json
 
-TOOLS={'fortigate-hardening':'interface.py','fortigate-auditoria':'interface.py','switch-mapper':'interface.py','localizador-mac':'interface.py','fortigate-rdm':'fortigate_rdm.py',
+TOOLS={'fortigate-hardening':'interface.py','switch-mapper':'interface.py','localizador-mac':'interface.py',
        'fortigate-config':'gerar.py','fortiswitch-config':'gerar.py'}
 
 
@@ -50,11 +50,10 @@ def main():
         sys.path.insert(0,str(home));sys.path.insert(0,str(folder)); os.chdir(folder)
         if mode=='--smoke-tool':
             report=Path(args[2]); namespace=runpy.run_path(str(script),run_name='smoke_tool')
-            if identifier!='fortigate-rdm':
-                import tkinter as tk
-                root=tk.Tk(); root.withdraw(); app=namespace['App'](root); root.update_idletasks()
-                if hasattr(app,'close'): app.close()
-                else: root.destroy()
+            import tkinter as tk
+            root=tk.Tk(); root.withdraw(); app=namespace['App'](root); root.update_idletasks()
+            if hasattr(app,'close'): app.close()
+            else: root.destroy()
             report.write_text(json.dumps({'ok':True,'tool':identifier}),encoding='utf-8')
             return
         sys.argv=[str(script)]

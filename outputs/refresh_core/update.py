@@ -50,7 +50,7 @@ def migrate(source,destination,manifest,preserve_existing=False):
             if digest!=manifest['files'].get(rel.as_posix()):target=destination/'dados/importados'/stamp/rel
         target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(file,target);copied.append(target.relative_to(destination).as_posix())
     if (source/'central.py').exists() and not (source/'ferramentas').exists() and (source.parent/'refresh_core').exists():
-        for module in ('fortigate-hardening','fortigate-auditoria','fortigate-rdm','switch-mapper','localizador-mac','fortigate-config','fortiswitch-config'):
+        for module in ('fortigate-hardening','switch-mapper','localizador-mac','fortigate-config','fortiswitch-config'):
             folder=source.parent/module
             if not folder.is_dir():continue
             prefix='ferramentas/'+module+'/'

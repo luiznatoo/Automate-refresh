@@ -1,6 +1,6 @@
-# Central de Refresh — interface simplificada 2.1.4
+# Central de Refresh — interface simplificada
 
-Escolha a ferramenta e clique em **Abrir**. A tela inicial está organizada em Verificar a rede, Comparar uma mudança e Gerar configurações.
+Escolha a ferramenta e clique em **Abrir**. A tela inicial está organizada em Verificar a rede e Gerar configurações.
 
 - **Opções → Equipamentos e acesso:** cadastro central e senhas da sessão, opcionais. Continue usando o cadastro dentro de cada ferramenta se preferir. A unidade/grupo escolhidos aparecem no rodapé da Central.
 - **Histórico:** botão no rodapé; clique duas vezes em um registro para abrir seu arquivo.
@@ -19,17 +19,16 @@ Abra CentralRefresh.exe no pacote Windows mantendo todas as pastas ao lado. Para
 
 Cadastre primeiro as unidades e os grupos de credenciais, depois os equipamentos. O grupo guarda usuário, nome da variável de senha, variável enable opcional e caminho absoluto de chave SSH opcional. Não digite senhas nesses campos. O CSV de equipamentos usa unidade;nome;host;porta;plataforma;grupo. Plataformas: fortinet, juniper_junos, cisco_ios e cisco_nxos. Uma importação inválida não substitui o cadastro anterior.
 
-Selecione a unidade e opcionalmente um grupo na tela principal. Cadastro local mantém os cadastros próprios dos módulos. Ao abrir um coletor, o inventário selecionado é preenchido sem iniciar conexões. Auditoria/hardening/RDM recebem FortiGates, mapeamento recebe switches e localizador recebe ambos. Geradores continuam utilizando seus projetos específicos.
+Selecione a unidade e opcionalmente um grupo na tela principal. Cadastro local mantém os cadastros próprios dos módulos. Ao abrir um coletor, o inventário selecionado é preenchido sem iniciar conexões. Hardening recebe FortiGates, mapeamento recebe switches e localizador recebe ambos. Geradores continuam utilizando seus projetos específicos.
 
 Senhas da sessão permite informar senha SSH e enable por grupo. Nada é salvo no cadastro ou despachos; senhas são repassadas por variáveis de ambiente aos processos filhos. Fechar a Central limpa sua cópia; ferramentas já abertas mantêm sua própria sessão. Se não fornecer na Central, preencha no módulo. Enable exige uma referência de variável definida no grupo.
 
-Auditoria e hardening utilizam uma senha por lote na interface: selecione um grupo quando houver senhas diferentes na unidade. As interfaces desses dois módulos não recebem chave SSH. Switch mapper, localizador e RDM aceitam grupos distintos por equipamento. As chaves conhecidas SSH continuam obrigatórias; nenhuma chave de host desconhecida é aceita automaticamente.
+Hardening utiliza uma senha por lote na interface: selecione um grupo quando houver senhas diferentes na unidade. A interface desse módulo não recebe chave SSH. Switch mapper e localizador aceitam grupos distintos por equipamento. As chaves conhecidas SSH continuam obrigatórias; nenhuma chave de host desconhecida é aceita automaticamente.
 
 ## Transporte e histórico
 
 refresh_core/ssh.py é o transporte FortiGate compartilhado: chave conhecida, paginação, timeout, limite de saída e aceite de banner pós-login. Cada módulo mantém sua lista própria de comandos. Cisco/Juniper usam a fábrica Netmiko compartilhada com verificação de chave habilitada.
 
-O RDM continua interativo no terminal e registra também stdout/stderr no log da sessão. O logger não intercepta a entrada do usuário/getpass. Senhas repassadas pela Central são mascaradas nas mensagens. Não inclua segredos em nomes ou descrições comuns.
 
 Histórico reúne sessões, relatórios, configurações exportadas, aplicações de hardening, reauditorias e erros exibidos. Clique em Atualizar histórico e selecione uma linha para abrir o artefato/log. Sessão encerrada não significa coleta aprovada: consulte o relatório técnico. O histórico local não é uma trilha externa imutável. Fechar a Central não interrompe as ferramentas já abertas; elas continuam registrando seus eventos.
 
