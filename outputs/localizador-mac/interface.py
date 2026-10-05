@@ -364,16 +364,19 @@ class SimpleApp(App):
         root.rowconfigure(2,weight=0);root.rowconfigure(0,weight=1)
         page=ttk.Frame(root,padding=20);page.grid(row=0,column=0,sticky='nsew');page.columnconfigure(0,weight=1)
         ttk.Label(page,text='Localizar dispositivos',font=('Segoe UI',18,'bold')).grid(row=0,column=0,sticky='w',pady=(0,12))
-        ttk.Label(page,text='FortiGate — IP opcional').grid(row=1,column=0,sticky='w')
-        self.firewall_ip=tk.StringVar();ttk.Entry(page,textvariable=self.firewall_ip).grid(row=2,column=0,sticky='ew',pady=(4,10))
-        header=ttk.Frame(page);header.grid(row=3,column=0,sticky='ew');header.columnconfigure(0,weight=1)
-        ttk.Label(header,text='Switches — cole um IP por linha').grid(row=0,column=0,sticky='w')
-        ttk.Button(header,text='Importar CSV',command=lambda:self.safe(self.import_switches)).grid(row=0,column=1)
-        self.switch_ips=tk.Text(page,height=5,wrap='none');self.switch_ips.grid(row=4,column=0,sticky='nsew',pady=4);page.rowconfigure(4,weight=1)
-        types=ttk.Frame(page);types.grid(row=5,column=0,sticky='ew',pady=(4,12))
-        ttk.Label(types,text='Tipo dos novos switches').pack(side='left')
-        self.platform=tk.StringVar(value='Juniper');self.platform_map={'Juniper':'juniper_junos','Cisco IOS':'cisco_ios','Cisco Nexus':'cisco_nxos'}
-        ttk.Combobox(types,textvariable=self.platform,values=list(self.platform_map),state='readonly',width=18).pack(side='left',padx=10)
+        toolbar=ttk.Frame(page);toolbar.grid(row=1,column=0,sticky='ew',pady=(0,6))
+        buttons=[]
+        for label,action in [('Adicionar firewall',lambda:self.open_device('firewalls')),('Adicionar switch',lambda:self.open_device('switches')),('Editar',self.edit_device),('Remover',self.remove_devices),('Importar CSV',self.choose_import)]:
+            buttons.append(ttk.Button(toolbar,text=label,command=lambda f=action:self.safe(f)))
+        arrange_buttons(toolbar,buttons)
+        grid=ttk.Frame(page);grid.grid(row=2,column=0,sticky='nsew',pady=(0,12));grid.columnconfigure(0,weight=1);grid.rowconfigure(0,weight=1);page.rowconfigure(2,weight=1)
+        self.device_table=ttk.Treeview(grid,columns=('tipo','nome','host'),show='headings',height=8,selectmode='extended')
+        for key,label,width in [('tipo','Tipo',120),('nome','Hostname',220),('host','IP / DNS',210)]:
+            self.device_table.heading(key,text=label);self.device_table.column(key,width=width,minwidth=90)
+        self.device_table.grid(row=0,column=0,sticky='nsew')
+        scroll=ttk.Scrollbar(grid,orient='vertical',command=self.device_table.yview);scroll.grid(row=0,column=1,sticky='ns');self.device_table.configure(yscrollcommand=scroll.set)
+        self.device_table.bind('<Double-1>',lambda e:self.safe(self.edit_device))
+        self.platform_map={'Juniper':'juniper_junos','Cisco IOS':'cisco_ios','Cisco Nexus':'cisco_nxos'}
         auth=ttk.Frame(page);auth.grid(row=6,column=0,sticky='ew');auth.columnconfigure(1,weight=1);auth.columnconfigure(3,weight=1)
         ttk.Label(auth,text='Usuário').grid(row=0,column=0)
         ttk.Entry(auth,textvariable=self.settings['usuario']).grid(row=0,column=1,sticky='ew',padx=(8,15))
@@ -401,32 +404,79 @@ class SimpleApp(App):
         self.status.set('Informe os equipamentos e clique em Localizar.')
 
     def fill_simple(self):
-        if not hasattr(self,'switch_ips'):return
-        self.switch_ips.delete('1.0','end');self.switch_ips.insert('1.0','\n'.join(r['host'] for r in self.editors['switches'].rows()))
-        self.firewall_ip.set(', '.join(r['host'] for r in self.editors['firewalls'].rows()))
+        if not hasattr(self,'device_table') or not hasattr(self,'mac_text'):return
+        self.device_table.delete(*self.device_table.get_children())
+        for key in ('firewalls','switches'):
+            for i,row in enumerate(self.editors[key].rows()):
+                kind='FortiGate' if key=='firewalls' else next((label for label,value in self.platform_map.items() if value==row.get('plataforma')),row.get('plataforma','Switch'))
+                self.device_table.insert('','end',iid=f'{key}:{i}',values=[kind,row['nome'] or row['host'],row['host']])
         self.mac_text.delete('1.0','end');self.mac_text.insert('1.0','\n'.join(r['mac'] for r in self.editors['macs'].rows()))
 
-    def import_switches(self):
-        self.project()
-        self.editors['switches'].import_csv();self.fill_simple()
+    def save_device(self,key,row,index=None):
+        if self.running:return
+        row=dict(row);row['host']=row.get('host','').strip();row['nome']=row.get('nome','').strip() or row['host']
+        if not row['host'] or any(c.isspace() for c in row['host']):raise ValueError('Informe um IP ou DNS válido, sem espaços.')
+        rows=self.editors[key].rows()
+        if any(i!=index and r['host'].casefold()==row['host'].casefold() and str(r.get('porta') or 22)==str(row.get('porta') or 22) for i,r in enumerate(rows)):raise ValueError('Este equipamento já está na lista.')
+        if any(i!=index and r['nome'].casefold()==row['nome'].casefold() for i,r in enumerate(rows)):raise ValueError('Hostname já cadastrado nesta lista.')
+        if index is None:rows.append(row)
+        else:rows[index]=row
+        self.project();self.editors[key].set_rows(rows);self.fill_simple()
+
+    def open_device(self,key,index=None):
+        if self.running:return
+        current=self.editors[key].rows()[index] if index is not None else {}
+        win=tk.Toplevel(self.root);win.title(('Editar ' if index is not None else 'Adicionar ')+('firewall' if key=='firewalls' else 'switch'));win.transient(self.root);win.grab_set();win.resizable(False,False)
+        body=ttk.Frame(win,padding=18);body.pack(fill='both',expand=True)
+        values={k:tk.StringVar(value=current.get(k,'')) for k in ('nome','host')}
+        for i,(keyfield,label) in enumerate([('nome','Hostname (opcional)'),('host','IP / DNS')]):
+            ttk.Label(body,text=label).grid(row=i*2,column=0,sticky='w',pady=(6,2))
+            ttk.Entry(body,textvariable=values[keyfield],width=42).grid(row=i*2+1,column=0,sticky='ew')
+        platform=tk.StringVar(value=next((label for label,value in self.platform_map.items() if value==current.get('plataforma')),'Juniper'))
+        if key=='switches':
+            ttk.Label(body,text='Tipo do switch').grid(row=4,column=0,sticky='w',pady=(8,2))
+            ttk.Combobox(body,textvariable=platform,values=list(self.platform_map),state='readonly',width=39).grid(row=5,column=0,sticky='ew')
+        def save():
+            try:
+                row={**current,**{k:v.get() for k,v in values.items()}}
+                if key=='switches':row['plataforma']=self.platform_map[platform.get()]
+                self.save_device(key,row,index);win.destroy()
+            except ValueError as exc:messagebox.showerror('Cadastro',str(exc),parent=win)
+        ttk.Button(body,text='Salvar' if index is not None else 'Adicionar',command=save).grid(row=6,column=0,sticky='e',pady=(14,0))
+
+    def edit_device(self):
+        selected=self.device_table.selection()
+        if len(selected)!=1:messagebox.showinfo('Cadastro','Selecione um equipamento para editar.');return
+        key,index=selected[0].split(':');self.open_device(key,int(index))
+
+    def remove_devices(self):
+        if self.running:return
+        selected=set(self.device_table.selection());self.project()
+        for key in ('switches','firewalls'):
+            self.editors[key].set_rows([r for i,r in enumerate(self.editors[key].rows()) if f'{key}:{i}' not in selected])
+        self.fill_simple()
+
+    def choose_import(self):
+        if self.running:return
+        win=tk.Toplevel(self.root);win.title('Importar CSV');win.transient(self.root);win.grab_set()
+        for key,label in [('firewalls','Firewalls'),('switches','Switches')]:
+            ttk.Button(win,text=label,command=lambda k=key:(win.destroy(),self.safe(lambda:self.import_devices(k)))).pack(padx=20,pady=10,fill='x')
+
+    def import_devices(self,key):
+        self.project();self.editors[key].import_csv();self.fill_simple()
 
     def apply_project(self,data):
         super().apply_project(data);self.fill_simple()
 
     def project(self):
-        if hasattr(self,'switch_ips'):
-            old={r['host']:r for r in self.editors['switches'].rows()}
-            hosts=[h.strip() for h in self.switch_ips.get('1.0','end').splitlines() if h.strip()]
-            self.editors['switches'].set_rows([old.get(h,{'host':h,'nome':'','plataforma':self.platform_map[self.platform.get()]}) for h in hosts])
-            old={r['host']:r for r in self.editors['firewalls'].rows()}
-            hosts=[h.strip() for h in self.firewall_ip.get().split(',') if h.strip()]
-            self.editors['firewalls'].set_rows([old.get(h,{'host':h,'nome':''}) for h in hosts])
+        if hasattr(self,'mac_text'):
             old={motor.mac(r['mac']):r for r in self.editors['macs'].rows() if r.get('mac')}
             addresses=[motor.mac(a.strip()) for a in self.mac_text.get('1.0','end').splitlines() if a.strip()]
             self.editors['macs'].set_rows([old.get(a,{'mac':a,'nome':'','ip':''}) for a in addresses])
         return super().project()
 
     def start(self):
+        if self.running:return
         # Sync visible inputs before collecting credentials for newly imported groups.
         self.project()
         super().start()

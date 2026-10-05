@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 2.1.9 — 2026-10-04
+
+- Cadastro de firewall e switch com hostname e IP/DNS, no formato do hardening.
+- Lista única com adicionar, editar, remover e importar CSV.
+- Preservação de nomes e acessos específicos ao editar.
+
+
 ## 2.1.8 — 2026-10-04
 
 - Localizador em tela única: colar IPs, informar acesso e localizar.
